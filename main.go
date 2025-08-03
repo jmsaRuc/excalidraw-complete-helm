@@ -47,6 +47,17 @@ func handleUI() http.Handler {
 	if err != nil {
 		panic(err)
 	}
+	// Check if the frontend URL is set and determine if SSL is used
+	useSSL := strings.Split(os.Getenv("VITE_FRONTEND_URL"), "://")[0] == "https"
+	baseUrl := strings.Split(os.Getenv("VITE_FRONTEND_URL"), "://")[1]
+
+	// Create a log field for the base URL and SSL status
+	urlField := logrus.Fields{
+		"baseUrl": baseUrl,
+		"isSSL":   useSSL,
+	}
+	logrus.WithFields(urlField).Info("Use frontend URL")
+
 	// Let's hot-patch all calls to firebase DB
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		originalPath := r.URL.Path
@@ -69,9 +80,17 @@ func handleUI() http.Handler {
 			http.Error(w, "Error reading file", http.StatusInternalServerError)
 			return
 		}
-		modifiedContent := strings.ReplaceAll(string(fileContent), "firestore.googleapis.com", "test.helloworld2.net")
-		modifiedContent = strings.ReplaceAll(modifiedContent, "ssl=!0", "ssl=1")
-		modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:1")
+
+		// Replace firebase URLs with the base URL
+		// and adjust SSL settings if necessary
+		modifiedContent := strings.ReplaceAll(string(fileContent), "firestore.googleapis.com", baseUrl)
+		if useSSL {
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl=!0", "ssl=1")
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:1")
+		} else {
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl=1", "ssl=!0")
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:1", "ssl:!0")
+		}
 
 		// Set the correct Content-Type based on the file extension
 		contentType := http.DetectContentType([]byte(modifiedContent))
@@ -220,7 +239,7 @@ func setupSocketIO() *socketio.Server {
 
 func waitForShutdown(ioo *socketio.Server) {
 	exit := make(chan struct{})
-	SignalC := make(chan os.Signal)
+	SignalC := make(chan os.Signal, 1)
 
 	signal.Notify(SignalC, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
@@ -244,7 +263,7 @@ func waitForShutdown(ioo *socketio.Server) {
 func main() {
 	// Define a log level flag
 	logLevel := flag.String("loglevel", "debug", "Set the logging level: debug, info, warn, error, fatal, panic")
-    listenAddr := flag.String("listen", ":3002", "Set the server listen address")
+	listenAddr := flag.String("listen", ":3002", "Set the server listen address")
 	flag.Parse()
 
 	// Set the log level
