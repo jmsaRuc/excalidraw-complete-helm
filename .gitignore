@@ -2,6 +2,7 @@ dist/
 frontend/
 !frontend/.keep
 excalidraw-complete
+excalidraw
 
 # .env
 .env
