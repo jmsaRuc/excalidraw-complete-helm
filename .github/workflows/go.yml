@@ -8,11 +8,13 @@ jobs:
   build:
 
     runs-on: ubuntu-latest
-
+    defaults:
+      run:
+        shell: bash
     steps:
     - uses: actions/checkout@v4
-    - name: add excalidraw dependencies
-      run: git clone https://github.com/jmsaRuc/excalidraw-complete-helm --recursive
+      with:
+        submodules: recursive
     - name: build excalidraw dependencies
       run: docker build -t exalidraw-ui-build excalidraw -f ui-build.Dockerfile
     - name: add to /frontend
