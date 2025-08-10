@@ -12,13 +12,13 @@ jobs:
     steps:
     - uses: actions/checkout@v4
     - name: add excalidraw dependencies
-      run: | 
-        git clone https://github.com/jmsaRuc/excalidraw-complete-helm --recursive
-        cd ./excalidraw-complete-helm
-        docker build -t exalidraw-ui-build excalidraw -f ui-build.Dockerfile
-        docker run -v ${PWD}/:/pwd/ -it exalidraw-ui-build cp -r /frontend /pwd
-      
+      run: git clone https://github.com/jmsaRuc/excalidraw-complete-helm --recursive
+    - name: build excalidraw dependencies
+      run: docker build -t exalidraw-ui-build excalidraw -f ui-build.Dockerfile
+    - name: add to /frontend
+      run: docker run -v ${PWD}/:/pwd/ -it exalidraw-ui-build cp -r /frontend /pwd 
     - name: Set up Go
+    
       uses: actions/setup-go@v4
       with:
         go-version: '1.20'
