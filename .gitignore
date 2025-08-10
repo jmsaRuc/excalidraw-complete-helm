@@ -2,3 +2,11 @@ dist/
 frontend/
 !frontend/.keep
 excalidraw-complete
+excalidraw
+
+# .env
+.env
+
+# date
+db-data/
+!db-data/.keep

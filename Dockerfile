@@ -1,8 +1,8 @@
-FROM node:18 AS build
+FROM node:18 AS build_ui
 
 WORKDIR /home/node/app
 
-COPY . .
+COPY ./excalidraw .
 
 RUN echo 'VITE_APP_BACKEND_V2_GET_URL="$VITE_FRONTEND_URL/api/v2/"' >> .env.production
 RUN echo 'VITE_APP_BACKEND_V2_POST_URL="$VITE_FRONTEND_URL/api/v2/post/"' >> .env.production
@@ -17,10 +17,20 @@ RUN echo 'VITE_APP_DISABLE_TRACKING=yes' >> .env.production
 RUN echo 'NODE_ENV="production"' >> .env.production
 
 RUN cat .env.production
-
 RUN npm install
 RUN cd excalidraw-app && npm run build:app:docker
 
-FROM ubuntu:20.04
-COPY --from=build /home/node/app/excalidraw-app/build /frontend
+FROM golang:alpine AS builder
+RUN apk update && apk add --no-cache git build-base
 
+COPY --from=build_ui /home/node/app/excalidraw-app/build /app/frontend
+
+WORKDIR /app
+COPY go.mod go.sum ./
+RUN go mod download
+COPY . .
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o /app/excalidraw-complete /app/main.go
+
+FROM alpine:latest
+COPY --from=builder /app/excalidraw-complete /app/excalidraw-complete
+CMD ["/app/excalidraw-complete"]    

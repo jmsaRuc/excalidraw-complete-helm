@@ -2,12 +2,11 @@ package main
 
 import (
 	"embed"
-	_ "embed"
+	"excalidraw-complete/config"
 	"excalidraw-complete/core"
 	"excalidraw-complete/handlers/api/documents"
 	"excalidraw-complete/handlers/api/firebase"
 	"excalidraw-complete/stores"
-	"flag"
 	"fmt"
 	"io"
 	"io/fs"
@@ -17,6 +16,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
 
 	"github.com/go-chi/chi/v5"
@@ -42,11 +42,30 @@ type (
 //go:embed all:frontend
 var assets embed.FS
 
-func handleUI() http.Handler {
+// init is invoked before main()
+func init() {
+	// loads values from .env into the system
+	if err := godotenv.Load(); err != nil {
+		logrus.WithError(err).Info("No .env file found, using environment variables")
+	}
+}
+
+func handleUI(config *config.Config) http.Handler {
 	sub, err := fs.Sub(assets, "frontend")
 	if err != nil {
 		panic(err)
 	}
+	// Check if the frontend URL is set and determine if SSL is used
+	useSSL := strings.Split(config.FrontendURL, "://")[0] == "https"
+	baseUrl := strings.Split(config.FrontendURL, "://")[1]
+
+	// Create a log field for the base URL and SSL status
+	urlField := logrus.Fields{
+		"baseUrl": baseUrl,
+		"isSSL":   useSSL,
+	}
+	logrus.WithFields(urlField).Info("Use frontend URL")
+
 	// Let's hot-patch all calls to firebase DB
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		originalPath := r.URL.Path
@@ -69,9 +88,17 @@ func handleUI() http.Handler {
 			http.Error(w, "Error reading file", http.StatusInternalServerError)
 			return
 		}
-		modifiedContent := strings.ReplaceAll(string(fileContent), "firestore.googleapis.com", "localhost:3002")
-		modifiedContent = strings.ReplaceAll(modifiedContent, "ssl=!0", "ssl=0")
-		modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:0")
+
+		// Replace firebase URLs with the base URL
+		// and adjust SSL settings if necessary
+		modifiedContent := strings.ReplaceAll(string(fileContent), "firestore.googleapis.com", baseUrl)
+		if useSSL {
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl=!0", "ssl=1")
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:1")
+		} else {
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl=1", "ssl=!0")
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:1", "ssl:!0")
+		}
 
 		// Set the correct Content-Type based on the file extension
 		contentType := http.DetectContentType([]byte(modifiedContent))
@@ -128,13 +155,13 @@ func setupRouter(documentStore core.DocumentStore) *chi.Mux {
 	})
 	return r
 }
-func setupSocketIO() *socketio.Server {
+func setupSocketIO(config *config.Config) *socketio.Server {
 	opts := socketio.DefaultServerOptions()
 	opts.SetMaxHttpBufferSize(5000000)
 	opts.SetPath("/socket.io")
 	opts.SetAllowEIO3(true)
 	opts.SetCors(&types.Cors{
-		Origin:      "*",
+		Origin:      config.FrontendURL,
 		Credentials: true,
 	})
 	ioo := socketio.NewServer(nil, opts)
@@ -220,7 +247,7 @@ func setupSocketIO() *socketio.Server {
 
 func waitForShutdown(ioo *socketio.Server) {
 	exit := make(chan struct{})
-	SignalC := make(chan os.Signal)
+	SignalC := make(chan os.Signal, 1)
 
 	signal.Notify(SignalC, os.Interrupt, syscall.SIGHUP, syscall.SIGINT, syscall.SIGTERM, syscall.SIGQUIT)
 	go func() {
@@ -242,22 +269,26 @@ func waitForShutdown(ioo *socketio.Server) {
 }
 
 func main() {
-	// Define a log level flag
-	logLevel := flag.String("loglevel", "info", "Set the logging level: debug, info, warn, error, fatal, panic")
-    listenAddr := flag.String("listen", ":3002", "Set the server listen address")
-	flag.Parse()
+	// Load configuration
+	config := config.New()
 
+	// Define a log level flag
+	logLevel := config.LogLevel
+	port := config.Port
+	host := config.Host
+
+	listenAddr := fmt.Sprintf("%s:%s", host, port)
 	// Set the log level
-	level, err := logrus.ParseLevel(*logLevel)
+	level, err := logrus.ParseLevel(logLevel)
 	if err != nil {
 		fmt.Fprintf(os.Stderr, "Invalid log level: %v\n", err)
 		os.Exit(1)
 	}
 	logrus.SetLevel(level)
 
-	documentStore := stores.GetStore() // Make sure this is well-defined in your "stores" package
+	documentStore := stores.GetStore(config) // Make sure this is well-defined in your "stores" package
 	r := setupRouter(documentStore)
-	ioo := setupSocketIO()
+	ioo := setupSocketIO(config)
 	r.Handle("/socket.io/", ioo.ServeHandler(nil))
 	r.Get("/ping", func(w http.ResponseWriter, _ *http.Request) {
 		_, err := w.Write([]byte("pong"))
@@ -265,11 +296,11 @@ func main() {
 			panic(err)
 		}
 	})
-	r.Mount("/", handleUI())
+	r.Mount("/", handleUI(config))
 
-	logrus.WithField("addr", *listenAddr).Info("starting server")
+	logrus.WithField("addr", listenAddr).Info("starting server")
 	go func() {
-		if err := http.ListenAndServe(*listenAddr, r); err != nil {
+		if err := http.ListenAndServe(listenAddr, r); err != nil {
 			logrus.WithField("event", "start server").Fatal(err)
 		}
 	}()
