@@ -11,7 +11,7 @@ into a single Go binary. This solution encompasses:
 
 The project goal is to alleviate the setup complexities traditionally associated with self-hosting Excalidraw, especially in scenarios requiring data persistence and collaborative functionalities.
 
-## Excalidraw Complete helm
+# Excalidraw Complete helm
 
 - Updated Excalidraw Complete to use .env, with support for changing configurations without the need for rebuilding.
 - Added PostgreSQL support.
