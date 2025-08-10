@@ -20,7 +20,8 @@ RUN cat .env.production
 RUN npm install
 RUN cd excalidraw-app && npm run build:app:docker
 
-FROM golang:1.21-alpine AS build
+FROM golang:alpine AS builder
+RUN apk update && apk add --no-cache git build-base
 
 COPY --from=build_ui /home/node/app/excalidraw-app/build /app/frontend
 
@@ -28,10 +29,8 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN go build -o /app/excalidraw-complete /app/main.go
+RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o /app/excalidraw-complete /app/main.go
 
 FROM alpine:latest
-COPY --from=build /app/excalidraw-complete /app/excalidraw-complete
-
-EXPOSE 3002
-CMD ["/app/excalidraw-complete"]
+COPY --from=builder /app/excalidraw-complete /app/excalidraw-complete
+CMD ["/app/excalidraw-complete"]    
