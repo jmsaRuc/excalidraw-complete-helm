@@ -126,7 +126,6 @@ func handleUI(config *config.Config) http.Handler {
 			http.Error(w, "Error serving file", http.StatusInternalServerError)
 			return
 		}
-		return
 	})
 }
 
