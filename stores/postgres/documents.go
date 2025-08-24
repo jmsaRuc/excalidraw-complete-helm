@@ -14,8 +14,6 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var savedDocuments = make(map[string]core.Document)
-
 type documentStore struct {
 	db *sql.DB
 }

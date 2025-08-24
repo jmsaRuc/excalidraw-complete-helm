@@ -5,7 +5,7 @@ import (
 	"context"
 	"excalidraw-complete/core"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"log"
 
 	"github.com/aws/aws-sdk-go-v2/aws"
@@ -43,7 +43,7 @@ func (s *documentStore) FindID(ctx context.Context, id string) (*core.Document, 
 	}
 	defer resp.Body.Close()
 
-	data, err := ioutil.ReadAll(resp.Body)
+	data, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read document data: %v", err)
 	}

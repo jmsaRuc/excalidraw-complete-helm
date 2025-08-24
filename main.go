@@ -126,7 +126,6 @@ func handleUI(config *config.Config) http.Handler {
 			http.Error(w, "Error serving file", http.StatusInternalServerError)
 			return
 		}
-		return
 	})
 }
 
@@ -171,7 +170,7 @@ func setupSocketIO(config *config.Config) *socketio.Server {
 		me := socket.Id()
 		myRoom := socketio.Room(me)
 		ioo.To(myRoom).Emit("init-room")
-		utils.Log().Println("init room ", myRoom)
+		utils.Log().Printf("init room %v", myRoom)
 		socket.On("join-room", func(datas ...any) {
 			room := socketio.Room(datas[0].(string))
 			utils.Log().Printf("Socket %v has joined %v\n", me, room)
@@ -189,7 +188,7 @@ func setupSocketIO(config *config.Config) *socketio.Server {
 				for _, user := range usersInRoom {
 					newRoomUsers = append(newRoomUsers, user.Id())
 				}
-				utils.Log().Println(" room ", room, " has users ", newRoomUsers)
+				utils.Log().Printf(" room %v has users %v", room, newRoomUsers)
 				ioo.In(room).Emit(
 					"room-user-change",
 					newRoomUsers,
