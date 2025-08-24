@@ -1,0 +1,31 @@
+on:
+  release:
+    types: [created]
+
+permissions:
+    contents: write
+    packages: write
+
+jobs:
+  release-linux-amd64:
+    name: release linux/amd64
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        shell: bash
+    steps:
+    - uses: actions/checkout@v4
+      with:
+        submodules: recursive
+    - name: build excalidraw dependencies
+      run: docker build -t exalidraw-ui-build excalidraw -f ui-build.Dockerfile
+    - name: add to /frontend
+      run: docker run -v ${PWD}/:/pwd/ -i exalidraw-ui-build cp -r /frontend /pwd 
+    - name: Verify dependencies
+      run: go mod verify
+    - uses: wangyoucao577/go-release-action@v1
+      with:
+        github_token: ${{ secrets.GITHUB_TOKEN }}
+        goos: linux
+        goarch: amd64
+        goversion: '1.21'
