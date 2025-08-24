@@ -73,16 +73,13 @@ func HandleBatchCommit() http.HandlerFunc {
 		}
 
 		savedItems[data.Writes[0].Update.Name] = data.Writes[0].Update.Fields
-
+		render.Status(r, http.StatusOK)
 		render.JSON(w, r, BatchCommitResponse{
 			CommitTime: time.Now().Format(time.RFC3339),
 			WriteResults: []WriteResult{
 				WriteResult{UpdateTime: time.Now().Format(time.RFC3339)},
 			},
 		})
-		render.Status(r, http.StatusOK)
-		return
-
 	}
 }
 
@@ -115,6 +112,7 @@ func HandleBatchGet() http.HandlerFunc {
 			return
 		}
 		fmt.Println("existing key")
+		render.Status(r, http.StatusOK)
 		render.JSON(w, r, []BatchGetExistsResponse{BatchGetExistsResponse{
 			Found: FoundInfoResponse{
 				Name:       key,
@@ -124,8 +122,5 @@ func HandleBatchGet() http.HandlerFunc {
 			},
 			ReadTime: time.Now().Format(time.RFC3339),
 		}})
-		render.Status(r, http.StatusOK)
-		return
-
 	}
 }
