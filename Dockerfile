@@ -32,5 +32,6 @@ COPY . .
 RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o /app/excalidraw-complete /app/main.go
 
 FROM alpine:latest
+RUN apk add --no-cache curl
 COPY --from=builder /app/excalidraw-complete /app/excalidraw-complete
 CMD ["/app/excalidraw-complete"]    
