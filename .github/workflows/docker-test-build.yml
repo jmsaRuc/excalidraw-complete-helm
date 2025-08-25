@@ -1,0 +1,21 @@
+name: Docker Test Build
+
+on:
+  workflow_run:
+    workflows: ["Build and test Go"]
+    types: [completed]
+
+jobs:
+  build_push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build the Docker image
+      run: docker compose build
+    - name: Run
+      run: docker compose up 
+    - name: Wait for healthchecks
+      run: timeout 60s sh -c 'until docker ps | grep <CONTAINER_NAME> | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
+    
+    
