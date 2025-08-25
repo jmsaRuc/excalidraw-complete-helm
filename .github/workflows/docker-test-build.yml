@@ -1,0 +1,27 @@
+name: Docker Test Build
+
+on:
+  workflow_run:
+    workflows: ["Build and test Go"]
+    types: [completed]
+
+env:
+    HEALTH_CHECK: false
+jobs:
+  build_push:
+    runs-on: ubuntu-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Build the Docker image
+      run: docker compose build
+    - name: Run
+      run: docker compose up 
+    - name: Wait for healthchecks
+      run: timeout 60s sh -c 'until docker ps | grep excalidraw-complete | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
+    - name: check health
+      run: |
+        if ! $(docker ps | grep excalidraw-complete | grep -q healthy); then
+          echo "Container is not healthy"
+          exit 1
+        fi

@@ -3,7 +3,10 @@
 x-excalidraw: &service-excalidraw
   build:
     context: .
-    dockerfile: Dockerfile
+    platforms:
+        - linux/amd64
+        - linux/arm64
+    dockerfile: ./Dockerfile
   image: excalidraw-complete:latest 
   container_name: excalidraw-complete
   restart: unless-stopped
@@ -23,8 +26,11 @@ x-excalidraw: &service-excalidraw
     POSTGRES_USER: ${POSTGRES_USER:-excalidraw}
     POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-excalidraw}
     POSTGRES_DB: ${POSTGRES_DB:-excalidraw}
-
-
+  healthcheck:
+    test: ["CMD", "curl", "-f", "${VITE_FRONTEND_URLq:-http://localhost:3002q}"]
+    interval: 30s
+    timeout: 3s
+    retries: 3
 
 services:
   postgres:
@@ -41,7 +47,12 @@ services:
       POSTGRES_USER: ${POSTGRES_USER:-excalidraw}
       POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-excalidraw}
       POSTGRES_DB: ${POSTGRES_DB:-excalidraw}
-  
+    healthcheck:
+      test: ["CMD-SHELL", "sh -c 'pg_isready -U ${POSTGRES_USER:-excalidraw} -d ${POSTGRES_DB:-excalidraw}'"]
+      interval: 10s
+      timeout: 3s
+      retries: 3
+
   excalidraw-complete:
     profiles:
       - ''
