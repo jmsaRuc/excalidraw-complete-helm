@@ -7,7 +7,7 @@ x-excalidraw: &service-excalidraw
         - linux/amd64
         - linux/arm64
     dockerfile: ./Dockerfile
-  image: excalidraw-complete:latest 
+  image: ghcr.io/jmsaruc/excalidraw-complete:${RELEASE_TAG:-latest}
   container_name: excalidraw-complete
   restart: unless-stopped
   ports:
