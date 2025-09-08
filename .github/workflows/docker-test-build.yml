@@ -19,13 +19,5 @@ jobs:
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
-    - name: Run and Build
-      run: docker compose up --build -d
-    - name: Wait for healthchecks
-      run: timeout 60s sh -c 'until docker ps | grep excalidraw-complete | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
-    - name: check health
-      run: |
-        if ! $(docker ps | grep excalidraw-complete | grep -q healthy); then
-          echo "Container is not healthy"
-          exit 1
-        fi
+    - name: Run Build and test
+      run: docker compose up --build -d && timeout 60s sh -c 'until docker ps | grep excalidraw-complete | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
