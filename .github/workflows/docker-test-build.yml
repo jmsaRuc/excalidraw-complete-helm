@@ -8,7 +8,7 @@ on:
 env:
     HEALTH_CHECK: false
 jobs:
-  build_and_run:
+  build_push:
     runs-on: ubuntu-latest
 
     steps:
@@ -19,5 +19,15 @@ jobs:
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@v2
-    - name: Run Build and test
-      run: docker compose up --build -d && timeout 60s sh -c 'until docker ps | grep excalidraw-complete | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
+    - name: Build the Docker image
+      run: docker compose build
+    - name: Run
+      run: docker compose up -d
+    - name: Wait for healthchecks
+      run: timeout 60s sh -c 'until docker ps | grep excalidraw-complete | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
+    - name: check health
+      run: |
+        if ! $(docker ps | grep excalidraw-complete | grep -q healthy); then
+          echo "Container is not healthy"
+          exit 1
+        fi
