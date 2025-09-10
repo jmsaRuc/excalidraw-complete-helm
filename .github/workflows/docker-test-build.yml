@@ -18,9 +18,16 @@ jobs:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
+      uses: docker/setup-buildx-action@v3
+    - name: Cache Docker layers
+      uses: actions/cache@v3
+      with:
+        path: /tmp/.buildx-cache-app
+        key: ${{ runner.os }}-buildx-app-${{ github.sha }}
+        restore-keys: |
+          ${{ runner.os }}-buildx-app
     - name: Build and Run
-      run: docker compose up --build -d
+      run: RELEASE_TAG=${{ github.sha }} docker compose up --build -d --cache-from="type=local,src=/tmp/.buildx-cache-app" --cache-to="type=local,dest=/tmp/.buildx-cache-app-new,mode=max"
     - name: Wait for healthchecks
       run: timeout 60s sh -c 'until docker ps | grep excalidraw-complete | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
     - name: check health
@@ -29,3 +36,7 @@ jobs:
           echo "Container is not healthy"
           exit 1
         fi
+    - name: APP::Move cache
+      run: |
+        rm -rf /tmp/.buildx-cache-app         # Remove the old cache.
+        mv /tmp/.buildx-cache-app-new /tmp/.buildx-cache-app  # Move the new cache to replace the old cache.
