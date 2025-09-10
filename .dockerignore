@@ -2,4 +2,16 @@
 excalidraw/.env.production
 excalidraw/.env.development
 .env
-test
+.env.example
+
+# tests
+test/
+test/*
+
+# cache
+tmp/
+tmp/*
+
+# GitHub Actions
+.github/
+.github/*

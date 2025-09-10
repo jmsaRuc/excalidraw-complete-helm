@@ -31,9 +31,9 @@ jobs:
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
     - name: Build and push latest
-      run: RELEASE_TAG=latest docker compose build --push --cache-from="type=local,src=/tmp/.buildx-cache-app" --cache-to="type=local,dest=/tmp/.buildx-cache-app-new,mode=max"
-    - name: Build tag
-      run: RELEASE_TAG=${{ github.sha }} docker compose build --push --cache-from="type=local,src=/tmp/.buildx-cache-app" --cache-to="type=local,dest=/tmp/.buildx-cache-app-new,mode=max"
+      run: CACHE_TO="type=local,dest=/tmp/.buildx-cache-app-new,mode=max" CACHE_FROM="type=local,src=/tmp/.buildx-cache-app" COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 RELEASE_TAG=latest docker compose build --push
+    - name: Build and push tag
+      run: CACHE_TO="type=local,dest=/tmp/.buildx-cache-app-new,mode=max" CACHE_FROM="type=local,src=/tmp/.buildx-cache-app" COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 RELEASE_TAG=${{ github.sha }} docker compose build --push
     - name: APP::Move cache
       run: |
         rm -rf /tmp/.buildx-cache-app         # Remove the old cache.

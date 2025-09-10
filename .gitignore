@@ -10,3 +10,7 @@ excalidraw
 # date
 db-data/
 !db-data/.keep
+
+# cache
+tmp/
+!tmp/.keep

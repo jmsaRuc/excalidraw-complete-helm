@@ -27,7 +27,7 @@ jobs:
         restore-keys: |
           ${{ runner.os }}-buildx-app
     - name: Build and Run
-      run: RELEASE_TAG=${{ github.sha }} docker compose up --build -d --cache-from="type=local,src=/tmp/.buildx-cache-app" --cache-to="type=local,dest=/tmp/.buildx-cache-app-new,mode=max"
+      run: CACHE_TO="type=local,dest=/tmp/.buildx-cache-app-new,mode=max" CACHE_FROM="type=local,src=/tmp/.buildx-cache-app" COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 RELEASE_TAG=${{ github.sha }} docker compose up --build -d
     - name: Wait for healthchecks
       run: timeout 60s sh -c 'until docker ps | grep excalidraw-complete | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
     - name: check health

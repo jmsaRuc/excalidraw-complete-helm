@@ -3,6 +3,10 @@
 x-excalidraw: &service-excalidraw
   build:
     context: .
+    cache_from:
+      - ${CACHE_FROM:-type=local,src=./tmp/.buildx-cache}
+    cache_to:
+      - ${CACHE_TO:-type=local,dest=./tmp/.buildx-cache-app-new,mode=max}
     platforms:
         - linux/amd64
         - linux/arm64
