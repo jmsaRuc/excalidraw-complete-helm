@@ -15,9 +15,8 @@ The project goal is to alleviate the setup complexities traditionally associated
 
 - Updated Excalidraw Complete to use .env, with support for changing configurations without the need for rebuilding.
 - Added PostgreSQL support.
-- 
-**(to do)**
 - Add support for ARM architecture.
+**(to do)**
 - Create a helm chart, to make Excalidraw Complete deployable on Kubernetes
 - Update dependencies and change excalidraw module dependencies, to latets. 
 
