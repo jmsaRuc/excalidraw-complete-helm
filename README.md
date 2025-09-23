@@ -165,6 +165,6 @@ Excalidraw Complete is now running on your machine, ready to bring your collabor
 
 ---
 
-Excalidraw is a fantastic tool, but self-hosting it can be tricky. I welcome
-your contributions to improve Excalidraw Complete — be it through adding new
+Excalidraw is a fantastic tool, but self-hosting it can be tricky. 
+I welcome your contributions to improve Excalidraw Complete — be it through adding new
 features, improving existing ones, or bug reports.
