@@ -5,8 +5,6 @@ on:
     workflows: ["Build and test Go"]
     types: [completed]
 
-env:
-    HEALTH_CHECK: false
 jobs:
   build_test:
     runs-on: ubuntu-latest
