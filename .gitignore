@@ -14,3 +14,7 @@ db-data/
 # cache
 tmp/
 !tmp/.keep
+
+# vscode 
+.vscode
+.vscode/*

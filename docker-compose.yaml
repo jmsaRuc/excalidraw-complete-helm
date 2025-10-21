@@ -25,6 +25,7 @@ x-excalidraw: &service-excalidraw
     HOST: ${HOST:-0.0.0.0}
     PORT: ${PORT:-3002}
     LOG_LEVEL: ${LOG_LEVEL:-info}
+    DATA_SOURCE_NAME: ${DATA_SOURCE_NAME:-excalidraw.db}
     POSTGRES_HOST: ${POSTGRES_HOST:-excalidraw-postgres}
     POSTGRES_PORT: ${POSTGRES_PORT:-5432}
     POSTGRES_USER: ${POSTGRES_USER:-excalidraw}

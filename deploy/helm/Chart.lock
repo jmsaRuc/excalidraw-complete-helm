@@ -1,0 +1,6 @@
+dependencies:
+- name: postgresql
+  repository: oci://ghcr.io/open-bitnami/charts
+  version: 17.0.0
+digest: sha256:f27fe9d1a55ff662965aba4a84b4372fa0c68cbd27e1b2e5960ddeef5647beff
+generated: "2025-10-05T10:22:39.047292786+02:00"

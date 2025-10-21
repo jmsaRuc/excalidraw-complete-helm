@@ -1,0 +1,34 @@
+apiVersion: v2
+name: excalidraw-complete-helm
+
+version: v0.0.4-beta
+
+appVersion: v0.0.4-beta
+
+description: A Helm chart for Kubernetes to deploy Excalidraw Complete
+
+keywords:
+  - excalidraw
+  - excalidraw-complete
+  - excalidraw-complete-helm
+  - helm
+  - kubernetes
+  - chart
+  - whiteboard
+  - sketches
+  - visualizations
+
+type: application
+
+dependencies:
+  - name: postgresql
+    version: 17.0.0
+    repository: oci://ghcr.io/open-bitnami/charts
+    condition: postgresql.enabled
+
+sources:
+  - https://github.com/jmsaRuc/excalidraw-complete-helm
+
+maintainers:
+  - name: Jens Mikkel Shcroll Andersen
+    email: jensmikkelandersen@gmail.com

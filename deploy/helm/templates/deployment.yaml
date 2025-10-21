@@ -1,0 +1,71 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "excalidraw-complete.fullname" . }}
+  labels:
+    {{- include "excalidraw-complete.labels" . | nindent 4 }}
+spec:
+  replicas: {{ .Values.replicaCount }}
+  revisionHistoryLimit: {{ .Values.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "excalidraw-complete.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "excalidraw-complete.selectorLabels" . | nindent 8 }}
+    annotations:
+        {{- toYaml .Values.podAnnotations | nindent 8 }}
+    spec:
+    {{- with .Values.imagePullSecrets }}
+      imagePullSecrets:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
+      containers:
+      - name: {{ .Chart.Name }}
+        image: "{{ .Values.image.repository }}:{{ default "latest" .Values.image.tag }}"
+        imagePullPolicy: {{ default "IfNotPresent" .Values.image.imagePullPolicy }}
+        ports:
+        - containerPort: 3002
+          name: excalidraw-port
+        readinessProbe:
+          {{- toYaml .Values.readinessProbe | nindent 10 }}
+          periodSeconds: 10
+        resources:
+          {{- toYaml .Values.resources | nindent 10 }}
+        env:
+        - name: STORAGE_TYPE
+          value: "postgres"
+        - name: VITE_FRONTEND_URL
+          value: "{{ .Values.viteFrontendUrl }}"
+        - name: HOST
+          value: "0.0.0.0"
+        - name: PORT
+          value: "3002"
+        - name: LOG_LEVEL
+          value: "{{ .Values.logLevel }}"
+        - name: POSTGRES_HOST
+          value: {{ template "excalidraw-complete.postgresql.host" . }}
+        - name: POSTGRES_PORT
+          value: "{{ default "5432" .Values.postgresql.postgresqlPort }}"
+        - name: POSTGRES_DB
+          value: "{{ default "excalidraw" .Values.postgresql.postgresqlDatabase }}"
+        - name: POSTGRES_USER
+          value: "{{ default "excalidraw" .Values.postgresql.postgresqlUser }}"
+        - name: POSTGRES_PASSWORD
+          valueFrom:
+            secretKeyRef:
+            {{- if .Values.postgresql.existingSecret }}
+              name: {{ .Values.postgresql.existingSecret }}
+            {{- else }}
+              name: {{ template "excalidraw-complete.postgresql.secret" . }}
+            {{- end }}
+              key: {{ template "excalidraw-complete.postgresql.secretKey" . }}
+      {{- with .Values.volumeMounts }}    
+        volumeMounts:
+          {{- toYaml . | nindent 10 }}
+      {{- end }}
+    {{- with .Values.volumes }}
+      volumes:
+        {{- toYaml . | nindent 8 }}
+    {{- end }}
