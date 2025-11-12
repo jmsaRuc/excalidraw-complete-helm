@@ -74,10 +74,13 @@ func HandleBatchCommit() http.HandlerFunc {
 
 		savedItems[data.Writes[0].Update.Name] = data.Writes[0].Update.Fields
 		render.Status(r, http.StatusOK)
+
+		// the timestamps must be UTC, i.e. no zone offsets allowed
+		timestamp := time.Now().UTC().Format(time.RFC3339)
 		render.JSON(w, r, BatchCommitResponse{
-			CommitTime: time.Now().Format(time.RFC3339),
+			CommitTime: timestamp,
 			WriteResults: []WriteResult{
-				WriteResult{UpdateTime: time.Now().Format(time.RFC3339)},
+				WriteResult{UpdateTime: timestamp},
 			},
 		})
 	}
@@ -102,11 +105,13 @@ func HandleBatchGet() http.HandlerFunc {
 
 		fields, ok := savedItems[key]
 
+		// the timestamps must be UTC, i.e. no zone offsets allowed
+		timestamp := time.Now().UTC().Format(time.RFC3339)
 		if !ok {
 			fmt.Println("missing key")
 			render.JSON(w, r, []BatchGetEmptyResponse{BatchGetEmptyResponse{
 				Missing:  key,
-				ReadTime: time.Now().Format(time.RFC3339),
+				ReadTime: timestamp,
 			}})
 			render.Status(r, http.StatusOK)
 			return
@@ -117,10 +122,10 @@ func HandleBatchGet() http.HandlerFunc {
 			Found: FoundInfoResponse{
 				Name:       key,
 				Fields:     fields,
-				CreateTime: time.Now().Format(time.RFC3339),
-				UpdateTime: time.Now().Format(time.RFC3339),
+				CreateTime: timestamp,
+				UpdateTime: timestamp,
 			},
-			ReadTime: time.Now().Format(time.RFC3339),
+			ReadTime: timestamp,
 		}})
 	}
 }
