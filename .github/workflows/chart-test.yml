@@ -1,0 +1,30 @@
+name: test and lint Helm charts
+on: 
+  push:
+    paths-ignore:
+      - '**/README.md'  
+  pull_request:
+    paths-ignore:
+      - '**/README.md'
+
+permissions: {}
+
+jobs:
+  lint-test:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v5.0.0
+        with:
+          fetch-depth: 0
+
+      - name: Set up Helm
+        uses: azure/setup-helm@v4.3.1
+      
+      - name: update helm dep
+        run: helm dependency update deploy/excalidraw-complete-helm
+        
+      - name: run lint
+        run: helm lint deploy/excalidraw-complete-helm
