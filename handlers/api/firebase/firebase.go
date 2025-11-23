@@ -87,10 +87,6 @@ func HandleBatchCommit(config *config.Config, cacheStore *redis.CacheStore) http
 		_ = projectId
 		_ = databaseId
 
-		// Declare savedItemsRedis map and savedItems map
-		savedItemsRedis := make(map[string]interface{})
-		savedItems := make(map[string]interface{})
-
 		data := &BatchCommitRequest{}
 		// Seems like requests is text/plain but content is json ...
 		if err := render.DecodeJSON(r.Body, data); err != nil {
@@ -101,7 +97,7 @@ func HandleBatchCommit(config *config.Config, cacheStore *redis.CacheStore) http
 
 		// if HA is active, get existing saved items from redis, then update with new items
 		if config.HAActive {
-
+			savedItemsRedis := make(map[string]interface{})
 			savedData, err := cacheStore.GetSavedData("firebase-documents")
 			if err != nil || len(savedData) == 0 {
 				fmt.Println("No saved items yet, continuing")
@@ -110,14 +106,13 @@ func HandleBatchCommit(config *config.Config, cacheStore *redis.CacheStore) http
 			}
 
 			savedItemsRedis[data.Writes[0].Update.Name] = data.Writes[0].Update.Fields
-			savedItems = savedItemsRedis
+			savedItemsLocal = savedItemsRedis
 		} else {
 			savedItemsLocal[data.Writes[0].Update.Name] = data.Writes[0].Update.Fields
-			savedItems = savedItemsLocal
 		}
 
 		if config.HAActive {
-			if err := cacheStore.SetSavedData("firebase-documents", savedItems); err != nil {
+			if err := cacheStore.SetSavedData("firebase-documents", savedItemsLocal); err != nil {
 				fmt.Println(err)
 				render.Status(r, http.StatusInternalServerError)
 				return
@@ -145,10 +140,6 @@ func HandleBatchGet(config *config.Config, cacheStore *redis.CacheStore) http.Ha
 		fmt.Printf("Got %v and %v\n", projectId, databaseId)
 		data := &BatchGetRequest{}
 
-		// Declare savedItemsRedis map and savedItems map
-		savedItemsRedis := make(map[string]interface{})
-		savedItems := make(map[string]interface{})
-
 		// Seems like requests is text/plain but content is json ...
 		if err := render.DecodeJSON(r.Body, data); err != nil {
 			fmt.Println(err)
@@ -161,6 +152,7 @@ func HandleBatchGet(config *config.Config, cacheStore *redis.CacheStore) http.Ha
 
 		// if HA is active, get saved items from redis, else use local map
 		if config.HAActive {
+			savedItemsRedis := make(map[string]interface{})
 			var err error
 			savedItemsRedis, err = cacheStore.GetSavedData("firebase-documents")
 			if err != nil {
@@ -168,12 +160,10 @@ func HandleBatchGet(config *config.Config, cacheStore *redis.CacheStore) http.Ha
 				render.Status(r, http.StatusInternalServerError)
 				return
 			}
-			savedItems = savedItemsRedis
-		} else {
-			savedItems = savedItemsLocal
+			savedItemsLocal = savedItemsRedis
 		}
 
-		fields, ok := savedItems[key]
+		fields, ok := savedItemsLocal[key]
 
 		// the timestamps must be UTC, i.e. no zone offsets allowed
 		timestamp := time.Now().UTC().Format(time.RFC3339)
