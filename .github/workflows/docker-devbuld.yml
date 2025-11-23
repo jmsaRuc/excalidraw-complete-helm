@@ -1,7 +1,7 @@
 on:
   push:
     tags: 
-        - '*.*.*-dev'  # Match semantic version tags like 1.0.0, 2.1.3, etc.
+        - '*.*.*-dev*'  # Match semantic version tags like 1.0.0, 2.1.3, etc.
 
 jobs:
   build_and_push:
