@@ -82,10 +82,10 @@ var savedItemsLocal = make(map[string]interface{})
 // HandleBatchCommit handles batch commit requests.
 func HandleBatchCommit(config *config.Config, cacheStore *redis.CacheStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
-		projectId := chi.URLParam(r, "project_id")
-		databaseId := chi.URLParam(r, "database_id")
-		_ = projectId
-		_ = databaseId
+		projectID := chi.URLParam(r, "project_id")
+		databaseID := chi.URLParam(r, "database_id")
+		_ = projectID
+		_ = databaseID
 
 		data := &BatchCommitRequest{}
 		// Seems like requests is text/plain but content is json ...
@@ -135,9 +135,9 @@ func HandleBatchCommit(config *config.Config, cacheStore *redis.CacheStore) http
 func HandleBatchGet(config *config.Config, cacheStore *redis.CacheStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
-		projectId := chi.URLParam(r, "project_id")
-		databaseId := chi.URLParam(r, "database_id")
-		fmt.Printf("Got %v and %v\n", projectId, databaseId)
+		projectID := chi.URLParam(r, "project_id")
+		databaseID := chi.URLParam(r, "database_id")
+		fmt.Printf("Got %v and %v\n", projectID, databaseID)
 		data := &BatchGetRequest{}
 
 		// Seems like requests is text/plain but content is json ...

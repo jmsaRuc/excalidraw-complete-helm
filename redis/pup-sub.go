@@ -69,19 +69,19 @@ func (m Message) MarshalBinary() (data []byte, err error) {
 	return bytes, nil
 }
 
-func (msg Message) hexDecode() (Message, error) {
-	if msg.Args != nil {
-		for i, arg := range msg.Args {
+func (m Message) hexDecode() (Message, error) {
+	if m.Args != nil {
+		for i, arg := range m.Args {
 			if str, ok := arg.(string); ok {
 				decoded, err := hex.DecodeString(str)
 				if err != nil {
-					return msg, err
+					return m, err
 				}
-				msg.Args[i] = decoded
+				m.Args[i] = decoded
 			}
 		}
 	}
-	return msg, nil
+	return m, nil
 }
 
 func getPublishPayload(r *PubSub, room socketio.Room, user socketio.SocketId, event string, args ...any) ([]byte, error) {
