@@ -60,31 +60,31 @@ app.kubernetes.io/instance: {{ .Release.Name }}
 Create a default fully qualified app name.
 We truncate at 63 chars because some Kubernetes name fields are limited to this (by the DNS naming spec).
 */}}
-{{- define "excalidraw-complete.postgresql.fullname" -}}
-{{- if .Values.postgresql.fullnameOverride -}}
-{{- .Values.postgresql.fullnameOverride | trunc 63 | trimSuffix "-" -}}
+{{- define "excalidraw-complete.postgres.fullname" -}}
+{{- if .Values.postgres.fullnameOverride -}}
+{{- .Values.postgres.fullnameOverride | trunc 63 | trimSuffix "-" -}}
 {{- else -}}
-{{ printf "%s-%s" .Release.Name "postgresql"}}
+{{ printf "%s-%s" .Release.Name "postgres"}}
 {{- end -}}
 {{- end -}}
 
 {{/*
 Set postgres host
 */}}
-{{- define "excalidraw-complete.postgresql.host" -}}
-{{- if .Values.postgresql.enabled -}}
-{{- template "excalidraw-complete.postgresql.fullname" . -}}
+{{- define "excalidraw-complete.postgres.host" -}}
+{{- if .Values.postgres.enabled -}}
+{{- template "excalidraw-complete.postgres.fullname" . -}}
 {{- else -}}
-{{- .Values.postgresql.postgresqlHost | quote -}}
+{{- .Values.postgres.host | quote -}}
 {{- end -}}
 {{- end -}}
 
 {{/*
 Set postgres secret
 */}}
-{{- define "excalidraw-complete.postgresql.secret" -}}
-{{- if .Values.postgresql.enabled -}}
-{{- template "excalidraw-complete.postgresql.fullname" . -}}
+{{- define "excalidraw-complete.postgres.secret" -}}
+{{- if .Values.postgres.enabled -}}
+{{- template "excalidraw-complete.postgres.fullname" . -}}
 {{- else -}}
 {{- template "excalidraw-complete.fullname" . -}}
 {{- end -}}
@@ -93,10 +93,32 @@ Set postgres secret
 {{/*
 Set postgres secretKey
 */}}
-{{- define "excalidraw-complete.postgresql.secretKey" -}}
-{{- if .Values.postgresql.enabled -}}
-"postgresql-password"
+{{- define "excalidraw-complete.postgres.secretKey" -}}
+{{- if .Values.postgres.enabled -}}
+"postgres-password"
 {{- else -}}
-{{- default "postgresql-password" .Values.postgresql.existingSecretKey | quote -}}
+{{- default "postgres-password" .Values.postgres.auth.secretKeys.passwordKey | quote -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+set redis secret
+*/}}
+{{- define "excalidraw-complete.redis.secret" -}}
+{{- if .Values.redis.enabled -}}
+{{- template "excalidraw-complete.fullname" . }}-redis
+{{- else -}}
+{{- template "excalidraw-complete.fullname" . -}}
+{{- end -}}
+{{- end -}}
+
+{{/*
+set redis secretKey
+*/}}
+{{- define "excalidraw-complete.redis.secretKey" -}}
+{{- if .Values.redis.enabled -}}
+"redis-password"
+{{- else -}}
+{{- default "redis-password" .Values.redis.existingSecretKey | quote -}}
 {{- end -}}
 {{- end -}}

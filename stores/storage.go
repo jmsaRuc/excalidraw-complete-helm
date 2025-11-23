@@ -13,6 +13,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// GetStore selects and initializes the appropriate DocumentStore based on the configuration.
 func GetStore(config *config.Config) core.DocumentStore {
 	storageType := config.StorageType
 	var store core.DocumentStore

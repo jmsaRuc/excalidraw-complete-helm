@@ -14,6 +14,7 @@ var savedDocuments = make(map[string]core.Document)
 type documentStore struct {
 }
 
+// NewDocumentStore initializes a new in-memory DocumentStore.
 func NewDocumentStore() core.DocumentStore {
 	return &documentStore{}
 }

@@ -9,7 +9,7 @@ import (
 	"database/sql"
 	"log"
 
-	_ "github.com/mattn/go-sqlite3"
+	_ "github.com/mattn/go-sqlite3" // SQLite driver
 	"github.com/oklog/ulid/v2"
 	"github.com/sirupsen/logrus"
 )
@@ -18,6 +18,7 @@ type documentStore struct {
 	db *sql.DB
 }
 
+// NewDocumentStore initializes a new DocumentStore with the given SQLite data source name.
 func NewDocumentStore(dataSourceName string) core.DocumentStore {
 	// db, err := sql.Open("sqlite3", ":memory:")
 	db, err := sql.Open("sqlite3", dataSourceName)

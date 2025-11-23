@@ -11,11 +11,13 @@ import (
 )
 
 type (
+	// DocumentCreateResponse represents the response for document creation.
 	DocumentCreateResponse struct {
 		ID string `json:"id"`
 	}
 )
 
+// HandleCreate handles the creation of a new document.
 func HandleCreate(documentStore core.DocumentStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		data := new(bytes.Buffer)
@@ -35,6 +37,7 @@ func HandleCreate(documentStore core.DocumentStore) http.HandlerFunc {
 	}
 }
 
+// HandleGet handles retrieving a document by its ID.
 func HandleGet(documentStore core.DocumentStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		id := chi.URLParam(r, "id")

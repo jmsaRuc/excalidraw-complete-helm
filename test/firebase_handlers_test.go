@@ -4,17 +4,48 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"excalidraw-complete/config"
 	"excalidraw-complete/handlers/api/firebase"
+	"excalidraw-complete/redis"
 	"net/http"
 	"net/http/httptest"
+	"strconv"
 	"testing"
 
+	"github.com/alicebob/miniredis/v2"
 	chi "github.com/go-chi/chi/v5"
 )
 
+func makeCacheStoreForTest(t *testing.T) *redis.CacheStore {
+	s, err := miniredis.Run()
+	if err != nil {
+		t.Fatalf("failed to start miniredis: %v", err)
+	}
+	defer s.Close()
+
+	ctx := context.Background()
+	portInt, err := strconv.Atoi(s.Port())
+	if err != nil {
+		t.Fatalf("failed to convert port to int: %v", err)
+	}
+	cfg := config.Redis{
+		Host:     s.Host(),
+		Port:     portInt,
+		Password: "",
+		DB:       0,
+	}
+	cs := redis.NewCacheStore(ctx, cfg)
+
+	return cs
+}
+
 func TestFirebaseBatchCommitAndGet(t *testing.T) {
-	commit := firebase.HandleBatchCommit()
-	get := firebase.HandleBatchGet()
+	cfg := config.New()
+	cacheStore := makeCacheStoreForTest(t)
+
+	// setup handlers with cache store
+	commit := firebase.HandleBatchCommit(cfg, cacheStore)
+	get := firebase.HandleBatchGet(cfg, cacheStore)
 
 	// commit an item
 	payload := firebase.BatchCommitRequest{

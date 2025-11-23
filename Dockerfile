@@ -1,5 +1,9 @@
 FROM node:18 AS build_ui
 
+
+ARG PLATFORM
+ARG TARGETARCH
+
 WORKDIR /home/node/app
 
 COPY ./excalidraw .
@@ -14,13 +18,22 @@ RUN echo 'VITE_APP_PLUS_APP="$VITE_FRONTEND_URL/app/"' >> .env.production
 RUN echo 'VITE_APP_WS_SERVER_URL="$VITE_FRONTEND_URL"' >> .env.production
 RUN echo 'VITE_APP_FIREBASE_CONFIG={"apiKey":"AIzaSyAd15pYlMci_xIp9ko6wkEsDzAAA0Dn0RU","authDomain":"","databaseURL":"","projectId":"excalidraw-room-persistence","storageBucket":"","messagingSenderId":"654800341332","appId":"1:654800341332:web:4a692de832b55bd57ce0c1"}' >> .env.production
 RUN echo 'VITE_APP_DISABLE_TRACKING=yes' >> .env.production
-RUN echo 'NODE_ENV="production"' >> .env.production
 
 RUN cat .env.production
-RUN npm install
-RUN cd excalidraw-app && npm run build:app:docker
+
+RUN echo ${TARGETARCH} > /TARGETARCH
+
+RUN npm install --target_arch=${TARGETARCH}
+
+ARG NODE_ENV=production
+
+RUN cd excalidraw-app && npm_config_target_arch=${TARGETARCH} npm run build:app:docker
 
 FROM golang:alpine AS builder
+
+ARG TARGETOS
+ARG TARGETARCH
+
 RUN apk update && apk add --no-cache git build-base
 
 COPY --from=build_ui /home/node/app/excalidraw-app/build /app/frontend
@@ -29,7 +42,8 @@ WORKDIR /app
 COPY go.mod go.sum ./
 RUN go mod download
 COPY . .
-RUN CGO_ENABLED=1 GOOS=linux go build -a -installsuffix cgo -o /app/excalidraw-complete /app/main.go
+RUN CGO_ENABLED=1 GOOS=${TARGETOS} GOARCH=${TARGETARCH} go build -a -installsuffix cgo -o /app/excalidraw-complete /app/main.go
+RUN GOARCH=$(go env GOARCH) && echo "Built for architecture: $GOARCH"
 
 FROM alpine:latest
 RUN apk add --no-cache curl

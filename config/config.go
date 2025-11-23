@@ -5,6 +5,15 @@ import (
 	"strconv"
 )
 
+// Redis configuration struct
+type Redis struct {
+	Host     string
+	Port     int
+	Password string
+	DB       int
+}
+
+// Postgres configuration struct
 type Postgres struct {
 	Host     string
 	Port     int
@@ -13,28 +22,34 @@ type Postgres struct {
 	DBName   string
 }
 
+// S3 configuration struct
 type S3 struct {
 	BucketName string
 }
 
+// Filesystem configuration struct
 type Filesystem struct {
 	LocalStoragePath string
 }
 
+// Sqlite configuration struct
 type Sqlite struct {
 	DataSourceName string
 }
 
+// Config is the main configuration struct
 type Config struct {
 	Postgres    Postgres
 	S3          S3
 	Filesystem  Filesystem
 	Sqlite      Sqlite
+	Redis       Redis
 	StorageType string
 	Host        string
 	Port        string
 	LogLevel    string
 	FrontendURL string
+	HAActive    bool
 }
 
 // New returns a new Config struct
@@ -56,11 +71,18 @@ func New() *Config {
 		Sqlite: Sqlite{
 			DataSourceName: getEnv("DATA_SOURCE_NAME", "test.db"),
 		},
+		Redis: Redis{
+			Host:     getEnv("REDIS_HOST", "127.0.0.1"),
+			Port:     getEnvAsInt("REDIS_PORT", 6379),
+			Password: getEnv("REDIS_PASSWORD", ""),
+			DB:       getEnvAsInt("REDIS_DB", 0),
+		},
 		StorageType: getEnv("STORAGE_TYPE", ""),
 		Host:        getEnv("HOST", "0.0.0.0"),
 		Port:        getEnv("PORT", "3002"),
 		LogLevel:    getEnv("LOG_LEVEL", "info"),
 		FrontendURL: getEnv("VITE_FRONTEND_URL", "http://localhost:3002"),
+		HAActive:    getEnvAsBool("HA_ACTIVE", false),
 	}
 }
 
@@ -80,5 +102,17 @@ func getEnvAsInt(name string, defaultVal int) int {
 		return value
 	}
 
+	return defaultVal
+}
+
+// Simple helper function to read an environment variable into boolean or return a default value
+func getEnvAsBool(name string, defaultVal bool) bool {
+	valueStr := getEnv(name, "")
+	if valueStr == "" {
+		return defaultVal
+	}
+	if value, err := strconv.ParseBool(valueStr); err == nil {
+		return value
+	}
 	return defaultVal
 }

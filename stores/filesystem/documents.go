@@ -17,6 +17,7 @@ type documentStore struct {
 	basePath string // Directory where documents are stored.
 }
 
+// NewDocumentStore initializes a new DocumentStore with the given base path.
 func NewDocumentStore(basePath string) core.DocumentStore {
 	if err := os.MkdirAll(basePath, 0755); err != nil {
 		log.Fatalf("failed to create base directory: %v", err)

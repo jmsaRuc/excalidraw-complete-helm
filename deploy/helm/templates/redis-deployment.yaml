@@ -1,0 +1,43 @@
+{{- if .Values.redis.enabled }}
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ include "excalidraw-complete.fullname" . }}-redis
+  labels:
+    {{- include "excalidraw-complete.labels" . | nindent 4 }}
+spec:
+  replicas: 1
+  revisionHistoryLimit: {{ .Values.redis.revisionHistoryLimit }}
+  selector:
+    matchLabels:
+      {{- include "excalidraw-complete.selectorLabels" . | nindent 6 }}
+  template:
+    metadata:
+      labels:
+        {{- include "excalidraw-complete.selectorLabels" . | nindent 8 }}
+    spec:
+      containers:
+      - name: {{ .Chart.Name }}-redis
+        image: "{{ .Values.redis.image.repository }}:{{ default "latest" .Values.redis.image.tag }}"
+        imagePullPolicy: {{ default "IfNotPresent" .Values.redis.image.imagePullPolicy }}
+        command: ["redis-server"]
+        args: ["--requirepass", "$(REDIS_PASSWORD)"]
+        ports:
+        - containerPort: 6379
+          name: redis-port
+        startupProbe:
+          {{- toYaml .Values.redis.startupProbe | nindent 10 }}
+          periodSeconds: 10
+        env:
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+            {{- if .Values.redis.existingSecret }}
+              name: {{ .Values.redis.existingSecret }}
+            {{- else }}
+              name: {{ template "excalidraw-complete.redis.secret" . }}
+            {{- end }}
+              key: {{ template "excalidraw-complete.redis.secretKey" . }}
+        resources:
+          {{- toYaml .Values.redis.resources | nindent 10 }}
+{{- end }}

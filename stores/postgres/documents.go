@@ -9,7 +9,7 @@ import (
 	"database/sql"
 	"log"
 
-	_ "github.com/lib/pq"
+	_ "github.com/lib/pq" // PostgreSQL driver
 	"github.com/oklog/ulid/v2"
 	"github.com/sirupsen/logrus"
 )
@@ -18,6 +18,7 @@ type documentStore struct {
 	db *sql.DB
 }
 
+// NewDocumentStore initializes a new DocumentStore with the given PostgreSQL connection string.
 func NewDocumentStore(psqlInfo string) core.DocumentStore {
 
 	db, err := sql.Open("postgres", psqlInfo)

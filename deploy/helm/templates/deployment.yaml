@@ -1,3 +1,4 @@
+{{- if .Values.redis.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -44,24 +45,39 @@ spec:
           value: "3002"
         - name: LOG_LEVEL
           value: "{{ .Values.logLevel }}"
+        - name: HA_ACTIVE
+          value: "true"
+        - name: REDIS_HOST
+          value: "{{ include "excalidraw-complete.fullname" . }}-redis"
+        - name: REDIS_PORT
+          value: "{{ default "6379" .Values.redis.service.port }}"
+        - name: REDIS_PASSWORD
+          valueFrom:
+            secretKeyRef:
+            {{- if .Values.redis.existingSecret }}
+              name: {{ .Values.redis.existingSecret }}
+            {{- else }}
+              name: {{ template "excalidraw-complete.redis.secret" . }}
+            {{- end }}
+              key: {{ template "excalidraw-complete.redis.secretKey" . }}
         - name: POSTGRES_HOST
-          value: {{ template "excalidraw-complete.postgresql.host" . }}
+          value: {{ template "excalidraw-complete.postgres.host" . }}
         - name: POSTGRES_PORT
-          value: "{{ default "5432" .Values.postgresql.postgresqlPort }}"
+          value: "{{ default "5432" .Values.postgres.service.port }}"
         - name: POSTGRES_DB
-          value: "{{ default "excalidraw" .Values.postgresql.postgresqlDatabase }}"
+          value: "{{ default "excalidraw" .Values.postgres.auth.database }}"
         - name: POSTGRES_USER
-          value: "{{ default "excalidraw" .Values.postgresql.postgresqlUser }}"
+          value: "{{ default "excalidraw" .Values.postgres.auth.username }}"
         - name: POSTGRES_PASSWORD
           valueFrom:
             secretKeyRef:
-            {{- if .Values.postgresql.existingSecret }}
-              name: {{ .Values.postgresql.existingSecret }}
+            {{- if .Values.postgres.auth.existingSecret }}
+              name: {{ .Values.postgres.auth.existingSecret }}
             {{- else }}
-              name: {{ template "excalidraw-complete.postgresql.secret" . }}
+              name: {{ template "excalidraw-complete.postgres.secret" . }}
             {{- end }}
-              key: {{ template "excalidraw-complete.postgresql.secretKey" . }}
-      {{- with .Values.volumeMounts }}    
+              key: {{ template "excalidraw-complete.postgres.secretKey" . }}
+      {{- with .Values.volumeMounts }}
         volumeMounts:
           {{- toYaml . | nindent 10 }}
       {{- end }}
@@ -69,3 +85,4 @@ spec:
       volumes:
         {{- toYaml . | nindent 8 }}
     {{- end }}
+{{- end }}

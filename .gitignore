@@ -18,3 +18,9 @@ tmp/
 # vscode 
 .vscode
 .vscode/*
+
+# deploy dev
+deploy/dev
+
+# sql db
+*.db

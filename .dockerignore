@@ -4,6 +4,10 @@ excalidraw/.env.development
 .env
 .env.example
 
+# frontend
+frontend/
+frontend/*
+
 # tests
 test/
 test/*
@@ -20,3 +24,6 @@ tmp/*
 # deploy
 deploy/
 deploy/*
+
+# build
+excalidraw-complete

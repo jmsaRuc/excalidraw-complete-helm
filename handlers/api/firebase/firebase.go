@@ -1,6 +1,8 @@
 package firebase
 
 import (
+	"excalidraw-complete/config"
+	"excalidraw-complete/redis"
 	"fmt"
 	"net/http"
 	"time"
@@ -10,59 +12,84 @@ import (
 )
 
 type (
+	// BatchGetRequest represents a request to get multiple documents.
 	BatchGetRequest struct {
 		Documents []string `json:"documents"`
 	}
+
+	// BatchGetEmptyResponse models a "missing" entry in a batch get response.
 	BatchGetEmptyResponse struct {
 		Missing  string `json:"missing"`
 		ReadTime string `json:"readTime"`
 	}
 
+	// FoundInfoResponse models the information of a found document.
 	FoundInfoResponse struct {
 		Name       string      `json:"name"`
 		Fields     interface{} `json:"fields"`
 		CreateTime string      `json:"createTime"`
 		UpdateTime string      `json:"updateTime"`
 	}
+
+	// BatchGetExistsResponse models a "found" entry in a batch get response.
 	BatchGetExistsResponse struct {
 		Found    FoundInfoResponse `json:"found"`
 		ReadTime string            `json:"readTime"`
 	}
 
+	// UpdateRequest represents an update to a document.
 	UpdateRequest struct {
 		Name   string      `json:"name"`
 		Fields interface{} `json:"fields"`
 	}
+
+	// WriteRequest represents a request to write a document.
 	WriteRequest struct {
 		Update UpdateRequest `json:"update"`
 	}
+
+	// BatchCommitRequest represents a request to commit multiple writes.
 	BatchCommitRequest struct {
 		Writes []WriteRequest `json:"writes"`
 	}
 
+	// WriteResult represents the result of a write operation.
 	WriteResult struct {
 		UpdateTime string `json:"updateTime"`
 	}
+
+	// BatchCommitResponse represents the response for a batch commit request.
 	BatchCommitResponse struct {
 		WriteResults []WriteResult `json:"writeResults"`
 		CommitTime   string        `json:"commitTime"`
 	}
 )
 
-var savedItems = make(map[string]interface{})
-
+// Bind is a no-op for BatchGetRequest.
 func (body *BatchGetRequest) Bind(r *http.Request) (err error) {
 	return nil
 }
+
+// Bind is a no-op for BatchCommitRequest.
 func (body *BatchCommitRequest) Bind(r *http.Request) (err error) {
 	return nil
 }
-func HandleBatchCommit() http.HandlerFunc {
+
+//create a local in-memory map to store firebase documents if HA is not active
+
+var savedItemsLocal = make(map[string]interface{})
+
+// HandleBatchCommit handles batch commit requests.
+func HandleBatchCommit(config *config.Config, cacheStore *redis.CacheStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 		projectId := chi.URLParam(r, "project_id")
 		databaseId := chi.URLParam(r, "database_id")
 		_ = projectId
 		_ = databaseId
+
+		// Declare savedItemsRedis map and savedItems map
+		savedItemsRedis := make(map[string]interface{})
+		savedItems := make(map[string]interface{})
 
 		data := &BatchCommitRequest{}
 		// Seems like requests is text/plain but content is json ...
@@ -72,18 +99,45 @@ func HandleBatchCommit() http.HandlerFunc {
 			return
 		}
 
-		savedItems[data.Writes[0].Update.Name] = data.Writes[0].Update.Fields
+		// if HA is active, get existing saved items from redis, then update with new items
+		if config.HAActive {
+
+			savedData, err := cacheStore.GetSavedData("firebase-documents")
+			if err != nil || len(savedData) == 0 {
+				fmt.Println("No saved items yet, continuing")
+			} else {
+				savedItemsRedis = savedData
+			}
+
+			savedItemsRedis[data.Writes[0].Update.Name] = data.Writes[0].Update.Fields
+			savedItems = savedItemsRedis
+		} else {
+			savedItemsLocal[data.Writes[0].Update.Name] = data.Writes[0].Update.Fields
+			savedItems = savedItemsLocal
+		}
+
+		if config.HAActive {
+			if err := cacheStore.SetSavedData("firebase-documents", savedItems); err != nil {
+				fmt.Println(err)
+				render.Status(r, http.StatusInternalServerError)
+				return
+			}
+		}
+		// the timestamps must be UTC, i.e. no zone offsets allowed
+		timestamp := time.Now().UTC().Format(time.RFC3339)
+
 		render.Status(r, http.StatusOK)
 		render.JSON(w, r, BatchCommitResponse{
-			CommitTime: time.Now().Format(time.RFC3339),
+			CommitTime: timestamp,
 			WriteResults: []WriteResult{
-				WriteResult{UpdateTime: time.Now().Format(time.RFC3339)},
+				WriteResult{UpdateTime: timestamp},
 			},
 		})
 	}
 }
 
-func HandleBatchGet() http.HandlerFunc {
+// HandleBatchGet handles batch get requests.
+func HandleBatchGet(config *config.Config, cacheStore *redis.CacheStore) http.HandlerFunc {
 	return func(w http.ResponseWriter, r *http.Request) {
 
 		projectId := chi.URLParam(r, "project_id")
@@ -91,22 +145,43 @@ func HandleBatchGet() http.HandlerFunc {
 		fmt.Printf("Got %v and %v\n", projectId, databaseId)
 		data := &BatchGetRequest{}
 
+		// Declare savedItemsRedis map and savedItems map
+		savedItemsRedis := make(map[string]interface{})
+		savedItems := make(map[string]interface{})
+
 		// Seems like requests is text/plain but content is json ...
 		if err := render.DecodeJSON(r.Body, data); err != nil {
 			fmt.Println(err)
 			render.Status(r, http.StatusBadRequest)
 			return
 		}
+
 		key := data.Documents[0]
 		fmt.Printf("Got key %v \n", key)
 
+		// if HA is active, get saved items from redis, else use local map
+		if config.HAActive {
+			var err error
+			savedItemsRedis, err = cacheStore.GetSavedData("firebase-documents")
+			if err != nil {
+				fmt.Println(err)
+				render.Status(r, http.StatusInternalServerError)
+				return
+			}
+			savedItems = savedItemsRedis
+		} else {
+			savedItems = savedItemsLocal
+		}
+
 		fields, ok := savedItems[key]
 
+		// the timestamps must be UTC, i.e. no zone offsets allowed
+		timestamp := time.Now().UTC().Format(time.RFC3339)
 		if !ok {
 			fmt.Println("missing key")
 			render.JSON(w, r, []BatchGetEmptyResponse{BatchGetEmptyResponse{
 				Missing:  key,
-				ReadTime: time.Now().Format(time.RFC3339),
+				ReadTime: timestamp,
 			}})
 			render.Status(r, http.StatusOK)
 			return
@@ -117,10 +192,10 @@ func HandleBatchGet() http.HandlerFunc {
 			Found: FoundInfoResponse{
 				Name:       key,
 				Fields:     fields,
-				CreateTime: time.Now().Format(time.RFC3339),
-				UpdateTime: time.Now().Format(time.RFC3339),
+				CreateTime: timestamp,
+				UpdateTime: timestamp,
 			},
-			ReadTime: time.Now().Format(time.RFC3339),
+			ReadTime: timestamp,
 		}})
 	}
 }

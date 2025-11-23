@@ -1,9 +1,8 @@
 apiVersion: v2
 name: excalidraw-complete-helm
 
-version: v0.0.4-beta
-
-appVersion: v0.0.4-beta
+version: v0.0.6-dev
+appVersion: v0.0.6-dev
 
 description: A Helm chart for Kubernetes to deploy Excalidraw Complete
 
@@ -21,10 +20,10 @@ keywords:
 type: application
 
 dependencies:
-  - name: postgresql
-    version: 17.0.0
-    repository: oci://ghcr.io/open-bitnami/charts
-    condition: postgresql.enabled
+  - name: postgres
+    version: 0.11.5
+    repository: oci://registry-1.docker.io/cloudpirates
+    condition: postgres.enabled
 
 sources:
   - https://github.com/jmsaRuc/excalidraw-complete-helm

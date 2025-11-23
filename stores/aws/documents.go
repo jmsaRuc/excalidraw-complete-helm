@@ -19,6 +19,7 @@ type documentStore struct {
 	bucket   string // Name of the S3 bucket
 }
 
+// NewDocumentStore initializes a new DocumentStore with the given S3 bucket name.
 func NewDocumentStore(bucketName string) core.DocumentStore {
 	cfg, err := config.LoadDefaultConfig(context.TODO())
 	if err != nil {

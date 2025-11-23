@@ -1,0 +1,24 @@
+{{- if .Values.redis.enabled }}
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{include "excalidraw-complete.fullname" .}}-redis
+  labels: {{- include "excalidraw-complete.labels" . | nindent 4 }}
+  {{- with .Values.redis.service.annotations }}
+  annotations:
+    {{- range $key, $value := . }}
+      {{ $key }}: {{ $value | quote }}
+    {{- end }}
+  {{- end }}
+spec:
+  type: {{.Values.redis.service.type}}
+  {{- if eq .Values.redis.service.type "LoadBalancer" }}
+  loadBalancerIP: {{ default "" .Values.redis.service.loadBalancerIP }}
+  {{- end }}
+  ports:
+    - port: {{ default "6379" .Values.redis.service.port}}
+      targetPort: redis-port
+      protocol: TCP
+      name: redis-http
+  selector: {{- include "excalidraw-complete.selectorLabels" . | nindent 4}}
+{{- end }}
