@@ -58,5 +58,6 @@ jobs:
           helm repo index charts/.ci-build/ --merge index.yaml --url ${{ github.server_url }}/${{github.repository}}/releases/download/${{ github.ref_name }}
           cp charts/.ci-build/index.yaml index.yaml
           echo "New index:" && cat index.yaml
+          git add index.yaml charts/
           git commit -a -m "bot: update pages index for helm charts"
           git push origin $GH_PAGES_BRANCH
