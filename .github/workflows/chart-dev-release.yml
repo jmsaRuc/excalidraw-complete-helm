@@ -27,12 +27,10 @@ jobs:
           echo "CHART_VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')" >> $GITHUB_OUTPUT
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-      - name: update helm dep
-        run: helm dependency update deploy/excalidraw-complete-helm
       - name: Package Charts
         run: |
           # Package charts
-          mkdir -p charts/.ci-build
+          mkdir -p $CHART_BASE_DIR/.ci-build
           echo "Setting chart version to ${{ steps.env-setup.outputs.CHART_VERSION }}"
 
           for DIR in $CHART_BASE_DIR/*; do
