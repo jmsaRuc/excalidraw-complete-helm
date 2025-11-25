@@ -55,7 +55,7 @@ jobs:
         id: ghpublish
         run: |
           git checkout $GH_PAGES_BRANCH --force
-          helm repo index charts/.ci-build/ --merge index.yaml --url "https://jmsaruc.github.io/excalidraw-complete-helm/excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz"
+          helm repo index charts/.ci-build/ --merge index.yaml --url "https://jmsaruc.github.io/excalidraw-complete-helm"
           cp charts/.ci-build/index.yaml index.yaml
           cp charts/.ci-build/excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz
           echo "New index:" && cat index.yaml
