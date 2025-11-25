@@ -29,7 +29,7 @@ entries:
     - https://github.com/jmsaRuc/excalidraw-complete-helm
     type: application
     urls:
-    - excalidraw-complete-helm-0.1.0-dev3.tgz/excalidraw-complete-helm-0.1.0-dev3.tgz
+    - excalidraw-complete-helm-0.1.0-dev3.tgz
     version: 0.1.0-dev3
   - apiVersion: v2
     appVersion: v0.1.0-dev1
