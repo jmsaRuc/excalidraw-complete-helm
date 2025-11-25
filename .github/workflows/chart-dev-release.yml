@@ -41,7 +41,8 @@ jobs:
             fi
           done
           git fetch --all
-
+      - name: test location
+        run: ls -la charts/.ci-build
       - name: Upload chart artifacts
         uses: actions/upload-artifact@v5
         with:
