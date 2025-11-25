@@ -4,20 +4,20 @@ on:
     tags:
       - "v*.*.*-dev*"
     paths:
-      - "charts/**"
+      - "deploy/**"
 
 jobs:
   chart-release:
     runs-on: ubuntu-latest
     env:
-      CHART_BASE_DIR: charts
+      CHART_BASE_DIR: deploy
       GH_PAGES_BRANCH: chart
     permissions:
       contents: write
       pages: write
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
       - name: Set ENVs
@@ -48,7 +48,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: helm-charts-${{ github.ref_name }}
-          path: charts/.ci-build/
+          path: charts/.ci-build/*.tgz
           retention-days: 30
           if-no-files-found: error
 
