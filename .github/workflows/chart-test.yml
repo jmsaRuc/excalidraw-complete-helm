@@ -24,7 +24,7 @@ jobs:
         uses: azure/setup-helm@v4.3.1
       
       - name: update helm dep
-        run: helm dependency update lint/excalidraw-complete-helm
+        run: helm dependency update deploy/excalidraw-complete-helm
 
       - name: run lint
-        run: helm lint lint/excalidraw-complete-helm
+        run: helm lint deploy/excalidraw-complete-helm

@@ -47,7 +47,7 @@ jobs:
         uses: actions/upload-artifact@v5
         with:
           name: helm-charts-${{ github.ref_name }}
-          path: charts/.ci-build/*.tgz
+          path: charts/.ci-build/excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz
           retention-days: 30
           if-no-files-found: error
 
