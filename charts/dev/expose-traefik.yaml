@@ -1,0 +1,10 @@
+apiVersion: helm.cattle.io/v1
+kind: HelmChartConfig
+metadata:
+  name: n
+  namespace: kube-system
+spec:
+  valuesContent: |-
+    additionalArguments:
+      - "--entryPoints.web.proxyProtocol.insecure"
+      - "--entryPoints.web.forwardedHeaders.insecure"

@@ -1,0 +1,172 @@
+# Default values for excalidraw-complete.
+# This is a YAML-formatted file.
+# Declare variables to be passed into your templates.
+
+replicaCount: 3
+revisionHistoryLimit: 10
+
+image:
+  repository: ghcr.io/jmsaruc/excalidraw-complete
+  tag: "latest"
+  imagePullPolicy: Never
+
+imagePullSecrets: []
+nameOverride: ""
+fullnameOverride: ""
+
+# For the vite frontend URL, make sure to include the correct protocol (http or https)
+viteFrontendUrl: "https://test.helloworld2.net"
+
+# Application log level. One of: "debug", "info", "warning", "error", "fatal", "panic"
+logLevel: "info"
+
+readinessProbe:
+  httpGet:
+    path: /healthz
+    port: http
+
+service:
+  port: 8080
+  # Annotations applied for services such as externalDNS or
+  # service type LoadBalancer
+  type: ClusterIP
+  # httpsPort: 443
+  # annotations: {}
+  # loadBalancerIP: 172.16.0.1
+
+ingress:
+  enabled: true
+  className: nginx
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-read-timeout: '3600'
+    nginx.ingress.kubernetes.io/proxy-send-timeout: '3600'
+    nginx.ingress.kubernetes.io/proxy-connect-timeout: '3600'
+    nginx.ingress.kubernetes.io/proxy-buffering: 'off'
+    nginx.ingress.kubernetes.io/proxy-request-buffering: 'off'
+    nginx.ingress.kubernetes.io/upstream-hash-by: '$remote_addr'
+    nginx.ingress.kubernetes.io/ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/force-ssl-redirect: 'true'
+    nginx.ingress.kubernetes.io/backend-protocol: 'HTTP'
+    nginx.ingress.kubernetes.io/enable-cors: 'true'
+    nginx.ingress.kubernetes.io/cors-allow-origin: '*'
+    nginx.ingress.kubernetes.io/cors-allow-methods:
+      'GET, PUT, POST, DELETE, PATCH, OPTIONS'
+    nginx.ingress.kubernetes.io/cors-allow-headers: 'DNT,Keep-Alive,User-Agent,X-Requested-With,If-Modified-Since,Cache-Control,Content-Type,Range,Authorization,Accept,Content-Length,X-CSRF-Token,Token,session,Origin,Host,Connection,Accept-Encoding,Accept-Language'
+    nginx.ingress.kubernetes.io/cors-allow-credentials: 'true'
+    nginx.ingress.kubernetes.io/cors-max-age: '300'  
+  hosts:
+    - host: test.helloworld2.net
+      paths:
+        - path: "/"
+          pathType: Prefix
+
+  tls: 
+  - secretName: excalidraw-complete-tls-secret 
+    hosts:
+      - test.helloworld2.net
+
+
+
+# Resource requests and limits
+resources:      
+  requests:
+    memory: "50Mi"
+    cpu: "50m"
+  limits:
+    memory: "100Mi"
+    cpu: "100m"
+
+
+volumeMounts: []
+
+volumes: []
+
+readinessProbe:
+  httpGet:
+    path: /
+    port: excalidraw-port
+  initialDelaySeconds: 5
+  periodSeconds: 10
+
+## Configuration values for the redis deployment.
+redis:
+  ## Set to false if bringing your own Redis instance
+  enabled: true
+  password: g22EL9Qv4UIrgZUpjTnQ
+  revisionHistoryLimit: 10
+
+  image:
+    repository: redis
+    tag: "8.2.2-alpine"
+    imagePullPolicy: IfNotPresent
+  
+  startupProbe:
+    exec:
+      command: ["redis-cli", "ping"]
+    failureThreshold: 30
+
+  service:
+    port: 6379
+    type: ClusterIP
+
+  resources:
+    requests:
+      memory: "50Mi"
+      cpu: "50m"
+    limits:
+      memory: "100Mi"
+      cpu: "100m"
+
+## Configuration values for the postgresql dependency.
+## ref: https://github.com/kubernetes/charts/blob/master/stable/postgresql/README.md
+##
+postgres:
+  ## Use the PostgreSQL chart dependency.
+  ## Set to false if bringing your own PostgreSQL
+  enabled: true
+  ## ssl enforce SSL communication with PostgresSQL
+  ## Default to false
+  ##
+  # ssl: false
+  ## ca Certificate of Authority
+  ## Default to empty, point to location of CA
+  ##
+  # ca: "path to ca"
+  ## postgresqlHost override postgres database host
+  ## Default to postgres
+  ##
+  ## postgresqlPort port for postgres
+  ## Default to 5432
+  ##
+  
+  ## PostgreSQL fullname Override
+  ##
+  fullnameOverride: ""
+  ## PostgreSQL User to create.
+  ##
+  auth:
+    username: admin
+    password: AZQ2cnq0iIND6bND4LYQ
+    database: excalidraw
+  
+  service:
+    port: 5432
+
+  persistence:
+    ## Enable PostgreSQL persistence using Persistent Volume Claims.
+    ##
+    enabled: true
+    ## concourse data Persistent Volume Storage Class
+    ## If defined, storageClassName: <storageClass>
+    ## If set to "-", storageClassName: "", which disables dynamic provisioning
+    ## If undefined (the default) or set to null, no storageClassName spec is
+    ##   set, choosing the default provisioner.  (gp2 on AWS, standard on
+    ##   GKE, AWS & OpenStack)
+    ##
+    # storageClass: "-"
+    ## Persistent Volume Access Mode.
+    ##
+    accessMode: ReadWriteOnce
+    ## Persistent Volume Storage Size.
+    ##
+    size: 8Gi
