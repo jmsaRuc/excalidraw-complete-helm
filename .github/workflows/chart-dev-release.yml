@@ -3,8 +3,6 @@ on:
   push:
     tags:
       - "v*.*.*-dev*"
-    paths:
-      - "deploy/**"
 
 jobs:
   chart-release:
