@@ -55,9 +55,10 @@ jobs:
         id: ghpublish
         run: |
           git checkout $GH_PAGES_BRANCH --force
-          helm repo index charts/.ci-build/ --merge index.yaml --url ${{ github.server_url }}/${{github.repository}}/releases/download/${{ github.ref_name }}
+          helm repo index charts/.ci-build/ --merge index.yaml --url excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz
           cp charts/.ci-build/index.yaml index.yaml
+          cp charts/.ci-build/excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz
           echo "New index:" && cat index.yaml
-          git add index.yaml charts/
+          git add index.yaml excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz
           git commit -a -m "bot: update pages index for helm charts"
           git push origin $GH_PAGES_BRANCH
