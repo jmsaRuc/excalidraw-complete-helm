@@ -11,7 +11,7 @@ jobs:
     runs-on: ubuntu-latest
     env:
       CHART_BASE_DIR: deploy
-      GH_PAGES_BRANCH: charts
+      GH_PAGES_BRANCH: chart
     permissions:
       contents: write
       pages: write
