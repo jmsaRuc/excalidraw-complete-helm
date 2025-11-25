@@ -22,7 +22,7 @@ jobs:
         id: env-setup
         run: |
           echo "SHA_SHORT=$(git rev-parse --short HEAD)" >> $GITHUB_OUTPUT
-          echo "CHART_VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')" >> $GITHUB_OUTPUT
+          echo "CHART_VERSION=$(echo ${GITHUB_REF#refs/tags/})" >> $GITHUB_OUTPUT
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
       - name: Package Charts
@@ -55,7 +55,7 @@ jobs:
         id: ghpublish
         run: |
           git checkout $GH_PAGES_BRANCH --force
-          helm repo index charts/.ci-build/ --merge index.yaml --url excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz
+          helm repo index charts/.ci-build/ --merge index.yaml --url "https://jmsaruc.github.io/excalidraw-complete-helm/excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz"
           cp charts/.ci-build/index.yaml index.yaml
           cp charts/.ci-build/excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz excalidraw-complete-helm-${{ steps.env-setup.outputs.CHART_VERSION }}.tgz
           echo "New index:" && cat index.yaml
