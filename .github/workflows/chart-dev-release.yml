@@ -43,11 +43,12 @@ jobs:
           git fetch --all
 
       - name: Upload chart artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: helm-charts-${{ github.ref_name }}
-          path: charts/.ci-build/*
+          path: charts/.ci-build/
           retention-days: 30
+          if-no-files-found: error
 
       - name: Publish to GH-Pages
         id: ghpublish
