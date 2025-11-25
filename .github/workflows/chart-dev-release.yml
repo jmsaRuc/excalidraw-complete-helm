@@ -48,15 +48,15 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: helm-charts-${{ github.ref_name }}
-          path: charts/.ci-build/*
+          path: $CHART_BASE_DIR/.ci-build/*
           retention-days: 30
 
       - name: Publish to GH-Pages
         id: ghpublish
         run: |
           git checkout $GH_PAGES_BRANCH --force
-          helm repo index charts/.ci-build/ --merge index.yaml --url ${{ github.server_url }}/${{github.repository}}/releases/download/${{ github.ref_name }}
-          cp charts/.ci-build/index.yaml index.yaml
+          helm repo index $CHART_BASE_DIR/.ci-build/ --merge index.yaml --url ${{ github.server_url }}/${{github.repository}}/releases/download/${{ github.ref_name }}
+          cp $CHART_BASE_DIR/.ci-build/index.yaml index.yaml
           echo "New index:" && cat index.yaml
           git commit -a -m "bot: update pages index for helm charts"
           git push origin $GH_PAGES_BRANCH
