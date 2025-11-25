@@ -4,13 +4,13 @@ on:
     tags:
       - "v*.*.*-dev*"
     paths:
-      - "deploy/**"
+      - "charts/**"
 
 jobs:
   chart-release:
     runs-on: ubuntu-latest
     env:
-      CHART_BASE_DIR: deploy
+      CHART_BASE_DIR: charts
       GH_PAGES_BRANCH: chart
     permissions:
       contents: write
@@ -27,8 +27,6 @@ jobs:
           echo "CHART_VERSION=$(echo ${{ github.ref_name }} | sed 's/^v//')" >> $GITHUB_OUTPUT
           git config user.name "$GITHUB_ACTOR"
           git config user.email "$GITHUB_ACTOR@users.noreply.github.com"
-      - name: update helm dep
-        run: helm dependency update deploy/excalidraw-complete-helm
       - name: Package Charts
         run: |
           # Package charts
