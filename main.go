@@ -199,7 +199,7 @@ func setupSocketIO(config *config.Config, publish func(room socketio.Room, user 
 					utils.Log().Printf("emit new user %v in room %v\n", me, room)
 					socket.Broadcast().To(room).Emit("new-user", me)
 					if publish != nil && config.HAActive {
-						publish(room, me, "new-user,", me)
+						publish(room, me, "new-user", me)
 					}
 				}
 
@@ -234,7 +234,7 @@ func setupSocketIO(config *config.Config, publish func(room socketio.Room, user 
 			utils.Log().Printf(" user %v sends volatile update to room %v\n", me, room)
 			socket.Volatile().Broadcast().To(room).Emit("client-broadcast", datas[1], datas[2])
 			if publish != nil && config.HAActive {
-				publish(room, me, "client-broadcast", datas[1], datas[2])
+				publish(room, me, "client-volatile-broadcast", datas[1], datas[2])
 			}
 		})
 

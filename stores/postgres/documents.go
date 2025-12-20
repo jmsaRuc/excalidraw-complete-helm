@@ -32,7 +32,7 @@ func NewDocumentStore(psqlInfo string) core.DocumentStore {
 		panic(err)
 	}
 
-	sts := `CREATE TABLE IF NOT EXISTS documents (id TEXT PRIMARY KEY, data bytea);`
+	sts := `CREATE TABLE IF NOT EXISTS documents (id char(26) COLLATE "C" PRIMARY KEY, data bytea);`
 	_, err = db.Exec(sts)
 	if err != nil {
 		log.Fatal(err)

@@ -136,8 +136,15 @@ func (r *PubSub) Start() error {
 				utils.Log().Printf("init room %v\n", mNoHex.Room)
 				r.server.To(mNoHex.Room).Emit("init-room")
 			case "join-room":
+				r.server.In(mNoHex.Room).FetchSockets()(func(usersInRoom []*socketio.RemoteSocket, _ error) {
+					for _, s := range usersInRoom {
+						if s.Id() == mNoHex.User {
+							s.Join(mNoHex.Room)
+							break
+						}
+					}
+				})
 				utils.Log().Printf("Socket %v has joined %v\n", mNoHex.User, mNoHex.Room)
-				r.server.Sockets().SocketsJoin(mNoHex.Room)
 			case "first-in-room":
 				r.server.To(mNoHex.Room).Emit(mNoHex.Event)
 			case "new-user":
