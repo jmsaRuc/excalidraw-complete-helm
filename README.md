@@ -1,4 +1,6 @@
-# Excalidraw Complete: A Self-Hosted Solution
+# Excalidraw Complete Helm: A Self-Hosted Solution
+
+*This is was orginaly a fork of PatWie/excalidraw-complete, wich is now called PatWie/drafft-ink*
 
 Excalidraw Complete simplifies the deployment of Excalidraw, bringing an
 all-in-one solution to self-hosting this versatile virtual whiteboard. Designed
@@ -8,24 +10,18 @@ into a single Go binary. This solution encompasses:
 - The intuitive Excalidraw frontend UI for seamless user experience.
 - An integrated data layer ensuring fast and efficient data handling based on different data providers.
 - A socket.io implementation to enable real-time collaboration among users.
+- Docker support for containerized deployment.
+- A Helm chart for effortless deployment on Kubernetes clusters.
+- Redis pub/sub support for scalable real-time communication.
 
-The project goal is to alleviate the setup complexities traditionally associated with self-hosting Excalidraw, especially in scenarios requiring data persistence and collaborative functionalities.
-
-# Excalidraw Complete helm
-
-- Updated Excalidraw Complete to use .env, with support for changing configurations without the need for rebuilding.
-- Added PostgreSQL support.
-- Add support for ARM architecture.
-**(to do)**
-- Create a helm chart, to make Excalidraw Complete deployable on Kubernetes
-- Update dependencies and change excalidraw module dependencies, to latets. 
+The project goal is to alleviate the setup complexities traditionally associated with self-hosting Excalidraw, especially in scenarios requiring data persistence and collaborative functionalities. 
 
 ## QuickStart
 
 To add Excalidraw Complete to your environment, follow these steps:
 
 1. **Download the latest release binary:**
-   Visit [the releases page](https://github.com/PatWie/excalidraw-complete/releases/) to find the download URL for the latest binary. Use `wget` to download it:
+   Visit [the releases page](https://github.com/jmsa/excalidraw-complete-helm/releases/) to find the download URL for the latest binary. Use `wget` to download it:
 
    ```bash
    wget <binary-download-url>
@@ -58,6 +54,22 @@ To add Excalidraw Complete to your environment, follow these steps:
 
 3. **Access the application:**
    Once launched, Excalidraw Complete is accessible at `localhost:3002`, ready for drawing and collaboration.
+
+### Kubernetes with Helm
+1. **Add the Helm repository:**
+   ```bash
+   helm repo add excalidraw-complete https://jmsa.github.io/excalidraw-complete-helm/
+   helm repo update
+   ```
+2. **Install the Helm chart:**
+   ```bash
+   helm install my-excalidraw excalidraw-complete/excalidraw-complete-helm
+   ```
+3. **Access the application:**
+   Once launched, Excalidraw Complete is accessible at the service's external IP or domain, ready for drawing and collaboration.
+
+
+
 
 ### Configuration
 

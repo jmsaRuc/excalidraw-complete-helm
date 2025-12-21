@@ -2,19 +2,19 @@
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: {{ include "excalidraw-complete.fullname" . }}-redis
+  name: {{ include "excalidraw-complete.redis.fullname" . }}
   labels:
-    {{- include "excalidraw-complete.labels" . | nindent 4 }}
+    {{- include "excalidraw-complete.redis.labels" . | nindent 4 }}
 spec:
   replicas: 1
   revisionHistoryLimit: {{ .Values.redis.revisionHistoryLimit }}
   selector:
     matchLabels:
-      {{- include "excalidraw-complete.selectorLabels" . | nindent 6 }}
+      {{- include "excalidraw-complete.redis.selectorLabels" . | nindent 6 }}
   template:
     metadata:
       labels:
-        {{- include "excalidraw-complete.selectorLabels" . | nindent 8 }}
+        {{- include "excalidraw-complete.redis.selectorLabels" . | nindent 8 }}
     spec:
       containers:
       - name: {{ .Chart.Name }}-redis

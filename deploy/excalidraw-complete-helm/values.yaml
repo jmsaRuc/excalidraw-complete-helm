@@ -3,7 +3,7 @@
 # Declare variables to be passed into your templates.
 
 replicaCount: 1
-revisionHistoryLimit: 10
+revisionHistoryLimit: 5
 
 image:
   repository: ghcr.io/jmsaruc/excalidraw-complete
@@ -73,15 +73,19 @@ readinessProbe:
 
 ## Configuration values for the redis deployment.
 redis:
-  ## Set to false if bringing your own Redis instance
+  ## Set to false if bringing your own Redis instance, and add the host under `redis.host`
   enabled: true
-  password: "<redispassword>"
-  revisionHistoryLimit: 10
+  #password: "<redispassword>" # If not set, a random password will be generated
+  revisionHistoryLimit: 5
+
+  #host: url of own redis instance if redis.enabled is false default: release-name-redis
 
   image:
     repository: redis
     tag: "8.2.2-alpine"
     imagePullPolicy: IfNotPresent
+
+  fullnameOverride: ""
   
   startupProbe:
     exec:
@@ -101,24 +105,14 @@ redis:
       cpu: "100m"
 
 ## Configuration values for the postgresql dependency.
-## ref: https://github.com/kubernetes/charts/blob/master/stable/postgresql/README.md
+## ref: https://github.com/CloudPirates-io/helm-charts/blob/main/charts/postgres/README.md
 ##
 postgres:
   ## Use the PostgreSQL chart dependency.
   ## Set to false if bringing your own PostgreSQL
   enabled: true
-  ## ssl enforce SSL communication with PostgresSQL
-  ## Default to false
-  ##
-  # ssl: false
-  ## ca Certificate of Authority
-  ## Default to empty, point to location of CA
-  ##
-  # ca: "path to ca"
-  ## postgresqlHost override postgres database host
-  ## Default to postgres
-  ##
-  ## host: cnpg-cluster-db-rw.cnpg-cluster.svc
+
+  ## host: default release-name-postgres 
   ##
   ## postgresqlPort port for postgres
   ## Default to 5432
@@ -137,11 +131,6 @@ postgres:
   ##
   fullnameOverride: ""
   
-
-  replication:
-    ## Enable PostgreSQL replication (primary/secondary)
-    ##
-    enabled: false
   persistence:
     ## Enable PostgreSQL persistence using Persistent Volume Claims.
     ##
