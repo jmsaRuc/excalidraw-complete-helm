@@ -1,15 +1,14 @@
-package test
+package memory
 
 import (
 	"bytes"
 	"context"
 	"excalidraw-complete/core"
-	mem "excalidraw-complete/stores/memory"
 	"testing"
 )
 
 func TestMemoryDocumentStore_CreateAndFindID(t *testing.T) {
-	store := mem.NewDocumentStore()
+	store := NewDocumentStore()
 
 	data := []byte(`{"hello":"world"}`)
 	id, err := store.Create(context.Background(), &core.Document{Data: *bytes.NewBuffer(data)})

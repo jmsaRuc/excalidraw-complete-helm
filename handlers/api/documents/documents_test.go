@@ -1,10 +1,9 @@
-package test
+package documents
 
 import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"excalidraw-complete/handlers/api/documents"
 	mem "excalidraw-complete/stores/memory"
 	"net/http"
 	"net/http/httptest"
@@ -17,8 +16,8 @@ func TestHandleCreateAndGet(t *testing.T) {
 	store := mem.NewDocumentStore()
 
 	// Setup router with handlers
-	create := documents.HandleCreate(store)
-	get := documents.HandleGet(store)
+	create := HandleCreate(store)
+	get := HandleGet(store)
 
 	body := []byte(`{"a":1}`)
 

@@ -1,10 +1,9 @@
-package test
+package filesystem
 
 import (
 	"bytes"
 	"context"
 	"excalidraw-complete/core"
-	fs "excalidraw-complete/stores/filesystem"
 	"os"
 	"path/filepath"
 	"testing"
@@ -15,7 +14,7 @@ func TestFilesystemDocumentStore_CreateAndFindID(t *testing.T) {
 	// ensure trailing slash behavior not required
 	base := filepath.Clean(dir)
 
-	store := fs.NewDocumentStore(base)
+	store := NewDocumentStore(base)
 
 	data := []byte("some-bytes")
 	id, err := store.Create(context.Background(), &core.Document{Data: *bytes.NewBuffer(data)})

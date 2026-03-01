@@ -1,15 +1,13 @@
-package test
+package config
 
 import (
 	"os"
 	"testing"
-
-	"excalidraw-complete/config"
 )
 
 func TestConfigDefaults(t *testing.T) {
 	t.Setenv("POSTGRES_HOST", "")
-	cfg := config.New()
+	cfg := New()
 
 	if cfg.Port != "3002" {
 		t.Fatalf("unexpected default port: %s", cfg.Port)
@@ -34,7 +32,7 @@ func TestConfigDefaults(t *testing.T) {
 
 	// verify getEnv override
 	t.Setenv("PORT", "9999")
-	if config.New().Port != "9999" {
+	if New().Port != "9999" {
 		t.Fatalf("expected overridden PORT from env")
 	}
 

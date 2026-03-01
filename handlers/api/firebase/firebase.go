@@ -351,15 +351,6 @@ func HandleBatchGet(config *config.Config, redisClient *redis.Client) http.Handl
 
 // HandleFetchDocument handles fetching a document for Firestore Listen requests.
 func HandleFetchDocument(config *config.Config, redisClient *redis.Client) http.HandlerFunc {
-	type listenRequest struct {
-		Database  string `json:"database"`
-		AddTarget struct {
-			Documents struct {
-				Documents []string `json:"documents"`
-			} `json:"documents"`
-			TargetID int `json:"targetId"`
-		} `json:"addTarget"`
-	}
 
 	return func(w http.ResponseWriter, r *http.Request) {
 		// Check if this is a session initialization or data request

@@ -1,8 +1,6 @@
 module excalidraw-complete
 
-go 1.24.1
-
-toolchain go1.24.9
+go 1.25.7
 
 require (
 	github.com/aws/aws-sdk-go-v2 v1.41.0

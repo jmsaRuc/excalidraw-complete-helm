@@ -152,19 +152,19 @@ func handleUI(config *config.Config) http.Handler {
 
 		//we only need to check 4 posible states for SLL settings, as `wsFireHandlerBaseURL` is the same as `frontendBaseURL` when not set.
 		switch {
-		case frontendBaseURL == wsFireHandlerBaseURL && useSSL == true:
+		case frontendBaseURL == wsFireHandlerBaseURL && useSSL:
 			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!1", "cN=!0")
 			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!1", "ssl:!0")
 
-		case frontendBaseURL == wsFireHandlerBaseURL && useSSL == false:
+		case frontendBaseURL == wsFireHandlerBaseURL && !useSSL:
 			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!0", "cN=!1")
 			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:!1")
 
-		case frontendBaseURL != wsFireHandlerBaseURL && wsUseSSL == true:
+		case frontendBaseURL != wsFireHandlerBaseURL && wsUseSSL:
 			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!1", "cN=!0")
 			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!1", "ssl:!0")
 
-		case frontendBaseURL != wsFireHandlerBaseURL && wsUseSSL == false:
+		case frontendBaseURL != wsFireHandlerBaseURL && !wsUseSSL:
 			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!0", "cN=!1")
 			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:!1")
 
@@ -448,7 +448,7 @@ func setupSocketIO(config *config.Config, opts *socketio.ServerOptions, redisCli
 						)
 					}
 					if isFollowRoom && len(otherClients) <= 0 {
-						fsockerID := strings.Replace(string(currentRoom), "follow@", "", 0)
+						fsockerID := strings.Replace(string(currentRoom), "follow@", "", -1)
 						rFsocketID := socketio.Room(fsockerID)
 						ioo.To(rFsocketID).Emit("broadcast-unfollow")
 					}

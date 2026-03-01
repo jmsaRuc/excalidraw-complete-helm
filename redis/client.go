@@ -29,7 +29,7 @@ func (c *Client) InitRedisClient(cfg config.Redis) {
 // getClient retrieves the Redis client, ensuring it's initialized
 func (c *Client) getClient(ctx context.Context) (client *redis.Client, err error) {
 	if c.RedisClient == nil {
-		return nil, errors.New("Redis client is not initialized")
+		return nil, errors.New("redis client is not initialized")
 	}
 	_, err = c.RedisClient.Ping(ctx).Result()
 	if err != nil {
