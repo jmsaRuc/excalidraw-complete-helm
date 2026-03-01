@@ -7,16 +7,18 @@ import (
 	"excalidraw-complete/core"
 	"excalidraw-complete/handlers/api/documents"
 	"excalidraw-complete/handlers/api/firebase"
-	"excalidraw-complete/redis"
+	rds "excalidraw-complete/redis"
 	"excalidraw-complete/stores"
 	"fmt"
 	"io"
 	"io/fs"
+	"math/rand/v2"
 	"net/http"
 	"os"
 	"os/signal"
 	"strings"
 	"syscall"
+	"time"
 
 	"github.com/joho/godotenv"
 	"github.com/sirupsen/logrus"
@@ -24,9 +26,12 @@ import (
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
 	"github.com/go-chi/cors"
-	"github.com/zishang520/engine.io/v2/types"
-	"github.com/zishang520/engine.io/v2/utils"
-	socketio "github.com/zishang520/socket.io/v2/socket"
+	"github.com/zishang520/socket.io/adapters/redis/v3/adapter"
+	"github.com/zishang520/socket.io/servers/engine/v3"
+	socketio "github.com/zishang520/socket.io/servers/socket/v3"
+	"github.com/zishang520/socket.io/v3/pkg/log"
+	"github.com/zishang520/socket.io/v3/pkg/types"
+	"github.com/zishang520/socket.io/v3/pkg/utils"
 )
 
 type (
@@ -61,14 +66,54 @@ func handleUI(config *config.Config) http.Handler {
 	}
 	// Check if the frontend URL is set and determine if SSL is used
 	useSSL := strings.Split(config.FrontendURL, "://")[0] == "https"
-	baseURL := strings.Split(config.FrontendURL, "://")[1]
+	frontendBaseURL := strings.Split(config.FrontendURL, "://")[1]
 
-	// Create a log field for the base URL and SSL status
-	urlField := logrus.Fields{
-		"baseUrl": baseURL,
-		"isSSL":   useSSL,
+	if frontendBaseURL != "localhost:3002" {
+
+		// Create a log field for the frontend URL and SSL status
+		urlField := logrus.Fields{
+			"baseUrl": frontendBaseURL,
+			"isSSL":   useSSL,
+		}
+		logrus.WithFields(urlField).Info("Frontend URL configuration")
+	} else {
+		// Create a log field for the frontend URL and SSL status
+		logrus.Info("Frontend URL is not set; defaulting to localhost:3002 with SSL disabled")
+		urlField := logrus.Fields{
+			"baseUrl": frontendBaseURL,
+			"isSSL":   useSSL,
+		}
+		logrus.WithFields(urlField).Info("Frontend URL configuration")
 	}
-	logrus.WithFields(urlField).Info("Use frontend URL")
+
+	// Create if webSocketFirebaseHandler url is set and determine if SSL is used
+	wsUseSSL := strings.Split(config.WebSocketFirebaseHandlerURL, "://")[0] == "https"
+	wsFireHandlerBaseURL := strings.Split(config.WebSocketFirebaseHandlerURL, "://")[1]
+
+	if wsFireHandlerBaseURL != frontendBaseURL {
+		// Create a log field for the WebSocket Firebase Handler URL and SSL status
+		wsURLField := logrus.Fields{
+			"webSocketFirebaseHandlerBaseUrl": wsFireHandlerBaseURL,
+			"webSocketFirebaseHandlerIsSSL":   wsUseSSL,
+		}
+
+		logrus.WithFields(wsURLField).Info("WebSocket Firebase Handler URL configuration")
+	} else {
+		logrus.Info("WebSocket Firebase Handler URL is not set; defaulting to Frontend URL with same SSL settings")
+	}
+
+	if wsFireHandlerBaseURL == frontendBaseURL && config.HAActive {
+		frontAndWsField := logrus.Fields{
+			"frontendBaseUrl":                 frontendBaseURL,
+			"webSocketFirebaseHandlerBaseUrl": wsFireHandlerBaseURL,
+		}
+
+		logrus.Warn(
+			"WebSocketFirebaseHandler URL is not different from FrontendURL while HA is active, ",
+			"this will break excalidraw collab if deployed using multiple instances/replicas.",
+		)
+		logrus.WithFields(frontAndWsField).Info("")
+	}
 
 	// Let's hot-patch all calls to firebase DB
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -99,13 +144,30 @@ func handleUI(config *config.Config) http.Handler {
 
 		// Replace firebase URLs with the base URL
 		// and adjust SSL settings if necessary
-		modifiedContent := strings.ReplaceAll(string(fileContent), "firestore.googleapis.com", baseURL)
-		if useSSL {
-			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl=!0", "ssl=1")
-			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:1")
-		} else {
-			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl=1", "ssl=!0")
-			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:1", "ssl:!0")
+		//as `wsFireHandlerBaseURL` is the same as frontendbaseURL when not set, we can just always replace the firebase URL with `wsFireHandlerBaseURL`.
+		modifiedContent := strings.ReplaceAll(string(fileContent), "firestore.googleapis.com", wsFireHandlerBaseURL)
+
+		//add time code to projectid: excalidraw-room-persistence to facilitate better loadbalancing in HA mode.
+		modifiedContent = strings.ReplaceAll(modifiedContent, "excalidraw-room-persistence", fmt.Sprintf("excalidraw-room-persistence-%d", rand.IntN(1000)))
+
+		//we only need to check 4 posible states for SLL settings, as `wsFireHandlerBaseURL` is the same as `frontendBaseURL` when not set.
+		switch {
+		case frontendBaseURL == wsFireHandlerBaseURL && useSSL == true:
+			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!1", "cN=!0")
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!1", "ssl:!0")
+
+		case frontendBaseURL == wsFireHandlerBaseURL && useSSL == false:
+			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!0", "cN=!1")
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:!1")
+
+		case frontendBaseURL != wsFireHandlerBaseURL && wsUseSSL == true:
+			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!1", "cN=!0")
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!1", "ssl:!0")
+
+		case frontendBaseURL != wsFireHandlerBaseURL && wsUseSSL == false:
+			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!0", "cN=!1")
+			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:!1")
+
 		}
 
 		// Set the correct Content-Type based on the file extension
@@ -137,21 +199,29 @@ func handleUI(config *config.Config) http.Handler {
 	})
 }
 
-func setupRouter(config *config.Config, documentStore core.DocumentStore, cacheStore *redis.CacheStore) *chi.Mux {
+func setupRouter(config *config.Config, documentStore core.DocumentStore, redisClient *rds.Client) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-
+	allowedOrigins := config.AllowedOrigins()
+	logrus.WithField("allowedOrigins", allowedOrigins).Info("Configured allowed origins for CORS")
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   []string{"https://*", "http://*"},
-		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "OPTIONS"},
-		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "Content-Length", "X-CSRF-Token", "Token", "session", "Origin", "Host", "Connection", "Accept-Encoding", "Accept-Language", "X-Requested-With"},
+		AllowedOrigins:   allowedOrigins,
+		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
+		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "Content-Length", "X-CSRF-Token", "Token", "session", "Origin", "Host", "Connection", "Accept-Encoding", "Accept-Language", "X-Requested-With", "X-Goog-Api-Client", "X-Firebase-GMPID", "X-HTTP-Session-Id", "X-Firebase-Client"},
+		ExposedHeaders:   []string{"X-HTTP-Session-Id", "X-Goog-Channel-Id", "X-Goog-Channel-Token"},
 		AllowCredentials: true,
 		MaxAge:           300, // Maximum value not ignored by any of major browsers
 	}))
-
+	r.Route("/google.firestore.v1.Firestore", func(r chi.Router) {
+		r.Post("/Listen/channel", firebase.HandleFetchDocument(config, redisClient))
+		r.Get("/Listen/channel", firebase.HandleFetchDocument(config, redisClient))
+	})
 	r.Route("/v1/projects/{project_id}/databases/{database_id}", func(r chi.Router) {
-		r.Post("/documents:commit", firebase.HandleBatchCommit(config, cacheStore))
-		r.Post("/documents:batchGet", firebase.HandleBatchGet(config, cacheStore))
+		r.Options("/documents:commit", firebase.HandleCors(allowedOrigins))
+		r.Post("/documents:commit", firebase.HandleBatchCommit(config, redisClient))
+		r.Options("/documents:batchGet", firebase.HandleCors(allowedOrigins))
+		r.Post("/documents:batchGet", firebase.HandleBatchGet(config, redisClient))
+
 	})
 
 	r.Route("/api/v2", func(r chi.Router) {
@@ -162,60 +232,64 @@ func setupRouter(config *config.Config, documentStore core.DocumentStore, cacheS
 	})
 	return r
 }
-func setupSocketIO(config *config.Config, publish func(room socketio.Room, user socketio.SocketId, event string, args ...any)) *socketio.Server {
-	opts := socketio.DefaultServerOptions()
-	opts.SetMaxHttpBufferSize(5000000)
-	opts.SetPath("/socket.io")
-	opts.SetAllowEIO3(true)
-	opts.SetCors(&types.Cors{
-		Origin:      config.FrontendURL,
-		Credentials: true,
-	})
+
+func setupSocketIO(config *config.Config, opts *socketio.ServerOptions, redisClient *rds.Client, timeout time.Duration) (*socketio.Server, error) {
+	//Set
+
 	ioo := socketio.NewServer(nil, opts)
 
 	ioo.On("connection", func(clients ...any) {
+
 		socket := clients[0].(*socketio.Socket)
 		me := socket.Id()
 		myRoom := socketio.Room(me)
+
 		ioo.To(myRoom).Emit("init-room")
-		if publish != nil && config.HAActive {
-			publish(myRoom, me, "init-room")
-		}
 		utils.Log().Printf("init room %v", myRoom)
 		socket.On("join-room", func(datas ...any) {
 			room := socketio.Room(datas[0].(string))
 			utils.Log().Printf("Socket %v has joined %v\n", me, room)
 			socket.Join(room)
-			if publish != nil && config.HAActive {
-				publish(room, me, "join-room")
-			}
-			ioo.In(room).FetchSockets()(func(usersInRoom []*socketio.RemoteSocket, _ error) {
-				if len(usersInRoom) <= 1 {
-					ioo.To(myRoom).Emit("first-in-room")
-					if publish != nil && config.HAActive {
-						publish(myRoom, me, "first-in-room")
-					}
-				} else {
-					utils.Log().Printf("emit new user %v in room %v\n", me, room)
-					socket.Broadcast().To(room).Emit("new-user", me)
-					if publish != nil && config.HAActive {
-						publish(room, me, "new-user", me)
-					}
+
+			ioo.In(room).Timeout(timeout).FetchSockets()(func(usersInRoom []*socketio.RemoteSocket, err error) {
+				if err != nil {
+					utils.Log().Printf("Error fetching sockets in room %v: %v\n", room, err)
+					return
 				}
 
-				// Inform all clients by new users.
 				newRoomUsers := []socketio.SocketId{}
 				for _, user := range usersInRoom {
 					newRoomUsers = append(newRoomUsers, user.Id())
 				}
+
+				//sync joined room to redis
+				if config.HAActive {
+
+					// setup cache store
+					allUserInRoom, err := rds.SyncStoredUsersInRoomWithLocal(redisClient, room, newRoomUsers, timeout)
+					if err != nil {
+						utils.Log().Printf("Error syncing users in room %v to redis: %v\n", room, err)
+						return
+					}
+					newRoomUsers = allUserInRoom
+				}
+
+				if len(newRoomUsers) <= 1 {
+					utils.Log().Printf("emit first user %v in room %v\n", me, room)
+					ioo.To(myRoom).Emit("first-in-room")
+
+				} else {
+					utils.Log().Printf("emit new user %v in room %v\n", me, room)
+					socket.Broadcast().To(room).Emit("new-user", me)
+
+				}
+
 				utils.Log().Printf(" room %v has users %v", room, newRoomUsers)
 				ioo.In(room).Emit(
 					"room-user-change",
 					newRoomUsers,
 				)
-				if publish != nil && config.HAActive {
-					publish(room, me, "room-user-change", newRoomUsers)
-				}
+
 			})
 		})
 
@@ -224,66 +298,174 @@ func setupSocketIO(config *config.Config, publish func(room socketio.Room, user 
 			room := socketio.Room(roomID)
 			utils.Log().Printf(" user %v sends update to room %v\n", me, room)
 			socket.Broadcast().To(room).Emit("client-broadcast", datas[1], datas[2])
-			if publish != nil && config.HAActive {
-				publish(room, me, "client-broadcast", datas[1], datas[2])
-			}
+
 		})
+
 		socket.On("server-volatile-broadcast", func(datas ...any) {
 			roomID := datas[0].(string)
 			room := socketio.Room(roomID)
 			utils.Log().Printf(" user %v sends volatile update to room %v\n", me, room)
 			socket.Volatile().Broadcast().To(room).Emit("client-broadcast", datas[1], datas[2])
-			if publish != nil && config.HAActive {
-				publish(room, me, "client-volatile-broadcast", datas[1], datas[2])
+
+		})
+
+		socket.On("user-follow", func(payload ...any) {
+			//love this socket libary...
+			paylow := OnUserFollowedPayload{
+				UserToFollow: UserToFollow{
+					SocketID: payload[0].(map[string]any)["userToFollow"].(map[string]any)["socketId"].(string),
+					Username: payload[0].(map[string]any)["userToFollow"].(map[string]any)["username"].(string),
+				},
+				Action: payload[0].(map[string]any)["action"].(string),
+			}
+
+			fRoomID := socketio.Room(fmt.Sprintf("follow@%s", paylow.UserToFollow.SocketID))
+
+			switch paylow.Action {
+			case "FOLLOW":
+				socket.Join(socketio.Room(fRoomID))
+
+				sockets := ioo.In(fRoomID).Timeout(timeout).FetchSockets()
+				followedby := []socketio.SocketId{}
+				sockets(func(usersInRoom []*socketio.RemoteSocket, err error) {
+					if err != nil {
+						utils.Log().Printf("Error fetching sockets in room %v: %v\n", fRoomID, err)
+						return
+					}
+					for _, user := range usersInRoom {
+						followedby = append(followedby, user.Id())
+					}
+
+					if config.HAActive {
+						// sync follow room to redis
+						allUserInRoom, err := rds.SyncStoredUsersInRoomWithLocal(redisClient, fRoomID, followedby, timeout)
+						if err != nil {
+							utils.Log().Printf("Error syncing users in room %v to redis: %v\n", fRoomID, err)
+							return
+						}
+						followedby = allUserInRoom
+					}
+
+				})
+
+				utils.Log().Printf("user %v followed %v (followed by %v)\n", me, paylow.UserToFollow.SocketID, followedby)
+				ioo.To(socketio.Room(paylow.UserToFollow.SocketID)).Emit(
+					"user-follow-room-change",
+					followedby,
+				)
+
+			case "UNFOLLOW":
+				socket.Leave(socketio.Room(fRoomID))
+
+				sockets := ioo.In(fRoomID).Timeout(timeout).FetchSockets()
+				followedby := []socketio.SocketId{}
+				sockets(func(usersInRoom []*socketio.RemoteSocket, err error) {
+					if err != nil {
+						utils.Log().Printf("Error fetching sockets in room %v: %v\n", fRoomID, err)
+						return
+					}
+					for _, user := range usersInRoom {
+						followedby = append(followedby, user.Id())
+					}
+
+					if config.HAActive {
+						err = rds.RemoveUserFromStoredUsersInRoom(redisClient, fRoomID, me, timeout)
+						if err != nil {
+							utils.Log().Printf("Error removing user %v from stored users in room %v: %v\n", me, fRoomID, err)
+							return
+						}
+
+						// sync follow room to redis
+						allUserInRoom, err := rds.SyncStoredUsersInRoomWithLocal(redisClient, fRoomID, followedby, timeout)
+						if err != nil {
+							utils.Log().Printf("Error syncing users in room %v to redis: %v\n", fRoomID, err)
+							return
+						}
+						followedby = allUserInRoom
+					}
+				})
+
+				utils.Log().Printf("user %v unfollowed %v (followed by %v)\n", me, paylow.UserToFollow.SocketID, followedby)
+				ioo.To(socketio.Room(paylow.UserToFollow.SocketID)).Emit(
+					"user-follow-room-change",
+					followedby,
+				)
+
+			default:
+				utils.Log().Printf("user %v sent unknown follow action %v for %v\n", me, paylow.Action, paylow.UserToFollow.SocketID)
+
 			}
 		})
 
-		socket.On("user-follow", func(datas ...any) {
-			// TODO()
-
-		})
 		socket.On("disconnecting", func(datas ...any) {
 			for _, currentRoom := range socket.Rooms().Keys() {
-				ioo.In(currentRoom).FetchSockets()(func(usersInRoom []*socketio.RemoteSocket, _ error) {
-					otherClients := []socketio.SocketId{}
+				ioo.In(currentRoom).Timeout(timeout).FetchSockets()(func(usersInRoom []*socketio.RemoteSocket, err error) {
+					if err != nil {
+						utils.Log().Printf("Error fetching sockets in room when disconnecting %v: %v\n", currentRoom, err)
+						return
+					}
 					utils.Log().Printf("disconnecting %v from room %v\n", me, currentRoom)
-					for _, userInRoom := range usersInRoom {
-						if userInRoom.Id() != me {
-							otherClients = append(otherClients, userInRoom.Id())
+
+					localUsers := []socketio.SocketId{}
+					for _, user := range usersInRoom {
+						localUsers = append(localUsers, user.Id())
+					}
+
+					if config.HAActive {
+
+						// sync room to redis
+						allUserInRoom, err := rds.SyncStoredUsersInRoomWithLocal(redisClient, currentRoom, localUsers, timeout)
+						if err != nil {
+							utils.Log().Printf("Error syncing users in room %v to redis: %v\n", currentRoom, err)
+							return
+						}
+						localUsers = allUserInRoom
+					}
+
+					otherClients := []socketio.SocketId{}
+					for _, user := range localUsers {
+						if user != me {
+							otherClients = append(otherClients, user)
 						}
 					}
-					if len(otherClients) > 0 {
+
+					if config.HAActive {
+						// remove disconnected user from redis stored users
+						err = rds.RemoveUserFromStoredUsersInRoom(redisClient, currentRoom, me, timeout)
+						if err != nil {
+							utils.Log().Printf("Error removing user %v from stored users in room %v: %v\n", me, currentRoom, err)
+							return
+						}
+					}
+
+					isFollowRoom := strings.HasPrefix(string(currentRoom), "follow@")
+
+					if !isFollowRoom && len(otherClients) > 0 {
 						utils.Log().Printf("leaving user, room %v has users  %v\n", currentRoom, otherClients)
 						ioo.In(currentRoom).Emit(
 							"room-user-change",
 							otherClients,
 						)
-
-						if publish != nil && config.HAActive {
-							publish(currentRoom, me, "room-user-change", otherClients)
-						}
-
 					}
-
-					if publish != nil && config.HAActive {
-						publish(currentRoom, me, "user-left")
+					if isFollowRoom && len(otherClients) <= 0 {
+						fsockerID := strings.Replace(string(currentRoom), "follow@", "", 0)
+						rFsocketID := socketio.Room(fsockerID)
+						ioo.To(rFsocketID).Emit("broadcast-unfollow")
 					}
-
 				})
-
 			}
-
 		})
 
 		socket.On("disconnect", func(datas ...any) {
 			socket.RemoveAllListeners("")
 			socket.Disconnect(true)
+			utils.Log().Printf("Socket %v disconnected\n", me)
 		})
 	})
-	return ioo
+	return ioo, nil
 }
 
-func waitForShutdown(ioo *socketio.Server, ps *redis.PubSub, cacheStore *redis.CacheStore) {
+func waitForShutdown(ioo *socketio.Server, redisclient *rds.Client) {
 	exit := make(chan struct{})
 	SignalC := make(chan os.Signal, 1)
 
@@ -300,8 +482,7 @@ func waitForShutdown(ioo *socketio.Server, ps *redis.PubSub, cacheStore *redis.C
 
 	<-exit
 	ioo.Close(nil)
-	ps.Close()
-	cacheStore.CloseCacheStore()
+	redisclient.CloseClient()
 	os.Exit(0)
 	fmt.Println("Shutting down...")
 	// TODO(patwie): Close other resources
@@ -309,6 +490,7 @@ func waitForShutdown(ioo *socketio.Server, ps *redis.PubSub, cacheStore *redis.C
 }
 
 func main() {
+
 	// Load configuration
 	config := config.New()
 
@@ -318,6 +500,8 @@ func main() {
 	host := config.Host
 	haActive := config.HAActive
 
+	log.DEBUG = false
+
 	listenAddr := fmt.Sprintf("%s:%s", host, port)
 	// Set the log level
 	level, err := logrus.ParseLevel(logLevel)
@@ -326,37 +510,69 @@ func main() {
 		os.Exit(1)
 	}
 	logrus.SetLevel(level)
+	// Initialize Redis client
+	var rClient = &rds.Client{}
+	if haActive {
+		logrus.Info("HA is active: Using Redis for socketio and caching")
+
+		// Initialize Redis client
+		rClient.InitRedisClient(config.Redis)
+
+	} else {
+		logrus.Info("HA is not active: Running in single-instance mode")
+
+	}
+
+	// Setting up Socket.IO server
+	opts := socketio.DefaultServerOptions()
+	opts.SetTransports(types.NewSet(engine.WebSocket, engine.Polling))
+	opts.SetMaxHttpBufferSize(5000000)
+	opts.SetAllowEIO3(false)
+	opts.SetAllowUpgrades(true)
+	opts.SetCors(&types.Cors{
+		Origin:      strings.Join(config.AllowedOrigins(), ", "),
+		Credentials: true,
+	})
+
+	timeoutInMili := int64(10000) // 10s
+	heartbeatMili := int64(20000) // 20s
+	timeout := time.Duration(timeoutInMili) * time.Millisecond
+	heartbeat := time.Duration(heartbeatMili) * time.Millisecond
+	opts.SetConnectTimeout(timeout + heartbeat)
+	opts.SetPingTimeout(timeout)
+	opts.SetPingInterval(heartbeat)
+
+	if config.HAActive {
+		//setup redis adapter for socket.io
+		var err error
+		connCtx := context.TODO()
+
+		streamClient, err := rds.NewStreamClient(connCtx, rClient)
+
+		if err != nil {
+			logrus.Fatalf("Failed to create Redis adapter client: %v", err)
+		}
+		aOpts := adapter.DefaultRedisStreamsAdapterOptions()
+		aOpts.SetMaxLen(10_000)
+		aOpts.SetHeartbeatInterval(heartbeat)
+		aOpts.SetHeartbeatTimeout(timeoutInMili)
+		opts.SetAdapter(&adapter.RedisStreamsAdapterBuilder{
+			Redis: streamClient.RedisAdapterClient,
+			Opts:  aOpts,
+		})
+	}
 
 	documentStore := stores.GetStore(config) // Make sure this is well-defined in your "stores" package
 
-	// wire redis publisher
-	var ps *redis.PubSub
-	var cacheStore *redis.CacheStore
-	pub := func(room socketio.Room, user socketio.SocketId, event string, args ...any) {
-		if ps != nil && haActive {
-			_ = ps.PublishRoom(room, user, event, args...)
-		}
-	}
-
-	ioo := setupSocketIO(config, pub)
-
-	if haActive {
-		logrus.Info("HA is active: Using Redis for pub/sub and caching")
-
-		ctx := context.Background()
-		cacheStore = redis.NewCacheStore(ctx, config.Redis)
-
-		ps = redis.NewPubSub(ctx, ioo, config.Redis)
-		if err := ps.Start(); err != nil {
-			logrus.WithError(err).Fatal("failed to start redis pubsub")
-		}
-	} else {
-		logrus.Info("HA is not active: Redis will not be used")
+	ioo, err := setupSocketIO(config, opts, rClient, timeout)
+	if err != nil {
+		logrus.Fatalf("Failed to set up SocketIO: %v", err)
 	}
 
 	// setup router
-	r := setupRouter(config, documentStore, cacheStore)
-	r.Handle("/socket.io/", ioo.ServeHandler(nil))
+	r := setupRouter(config, documentStore, rClient)
+
+	r.Handle("/socket.io/", ioo.ServeHandler(opts))
 	r.Get("/ping", func(w http.ResponseWriter, _ *http.Request) {
 		_, err := w.Write([]byte("pong"))
 		if err != nil {
@@ -373,6 +589,6 @@ func main() {
 	}()
 
 	logrus.Debug("Server is running in the background")
-	waitForShutdown(ioo, ps, cacheStore)
+	waitForShutdown(ioo, rClient)
 
 }

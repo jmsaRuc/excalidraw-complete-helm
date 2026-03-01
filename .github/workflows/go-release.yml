@@ -19,6 +19,8 @@ jobs:
     - uses: actions/checkout@v4
       with:
         submodules: recursive
+    - name: patch excalidraw with qurry varible
+      run: cd excalidraw && git apply ../excalidraw-qurry.patch && cd ..
     - name: build excalidraw dependencies
       run: docker build -t exalidraw-ui-build excalidraw -f ui-build.Dockerfile
     - name: add to /frontend

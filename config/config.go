@@ -1,8 +1,10 @@
 package config
 
 import (
+	"fmt"
 	"os"
 	"strconv"
+	"strings"
 )
 
 // Redis configuration struct
@@ -39,17 +41,19 @@ type Sqlite struct {
 
 // Config is the main configuration struct
 type Config struct {
-	Postgres    Postgres
-	S3          S3
-	Filesystem  Filesystem
-	Sqlite      Sqlite
-	Redis       Redis
-	StorageType string
-	Host        string
-	Port        string
-	LogLevel    string
-	FrontendURL string
-	HAActive    bool
+	Postgres                    Postgres
+	S3                          S3
+	Filesystem                  Filesystem
+	Sqlite                      Sqlite
+	Redis                       Redis
+	StorageType                 string
+	Host                        string
+	Port                        string
+	LogLevel                    string
+	FrontendURL                 string
+	WebSocketFirebaseHandlerURL string
+	HAActive                    bool
+	addedAllowedOrigins         []string
 }
 
 // New returns a new Config struct
@@ -77,12 +81,15 @@ func New() *Config {
 			Password: getEnv("REDIS_PASSWORD", ""),
 			DB:       getEnvAsInt("REDIS_DB", 0),
 		},
-		StorageType: getEnv("STORAGE_TYPE", ""),
-		Host:        getEnv("HOST", "0.0.0.0"),
-		Port:        getEnv("PORT", "3002"),
-		LogLevel:    getEnv("LOG_LEVEL", "info"),
-		FrontendURL: getEnv("VITE_FRONTEND_URL", "http://localhost:3002"),
-		HAActive:    getEnvAsBool("HA_ACTIVE", false),
+		StorageType:         getEnv("STORAGE_TYPE", ""),
+		Host:                getEnv("HOST", "0.0.0.0"),
+		Port:                getEnv("PORT", "3002"),
+		LogLevel:            getEnv("LOG_LEVEL", "info"),
+		FrontendURL:         getEnv("VITE_FRONTEND_URL", "http://localhost:3002"),
+		addedAllowedOrigins: getEnvAsStringArray("ALLOWED_ORIGINS", []string{}),
+		// HA Variable:
+		HAActive:                    getEnvAsBool("HA_ACTIVE", false),
+		WebSocketFirebaseHandlerURL: getEnv("WEBSOCKET_FIREBASE_HANDLER_URL", getEnv("VITE_FRONTEND_URL", "http://localhost:3002")),
 	}
 }
 
@@ -93,6 +100,14 @@ func getEnv(key string, defaultVal string) string {
 	}
 
 	return defaultVal
+}
+
+func getEnvAsStringArray(name string, defaultVal []string) []string {
+	valueStr := getEnv(name, "")
+	if valueStr == "" {
+		return defaultVal
+	}
+	return strings.Split(valueStr, ",")
 }
 
 // Simple helper function to read an environment variable into integer or return a default value
@@ -115,4 +130,17 @@ func getEnvAsBool(name string, defaultVal bool) bool {
 		return value
 	}
 	return defaultVal
+}
+
+// AllowedOrigins returns the allowed origins for CORS based on the configuration.
+func (c *Config) AllowedOrigins() []string {
+	var defaultAllowedOrigins []string
+
+	wsBaseURL := strings.Split(c.WebSocketFirebaseHandlerURL, "://")[1]
+	defaultAllowedOrigins = append(defaultAllowedOrigins, c.FrontendURL, c.WebSocketFirebaseHandlerURL, fmt.Sprintf("wss://%s", wsBaseURL))
+
+	if len(c.addedAllowedOrigins) != 0 {
+		return append(defaultAllowedOrigins, c.addedAllowedOrigins...)
+	}
+	return defaultAllowedOrigins
 }

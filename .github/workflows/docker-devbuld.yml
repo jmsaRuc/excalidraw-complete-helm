@@ -30,6 +30,8 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    - name: patch excalidraw with qurry varible
+      run: cd excalidraw && git apply ../excalidraw-qurry.patch && cd .. 
     - name: Set tag variable
       run: echo "DEV_TAG=${GITHUB_REF#refs/tags/}" >> $GITHUB_ENV
     - name: Build and push tag

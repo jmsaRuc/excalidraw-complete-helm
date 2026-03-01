@@ -1,0 +1,13 @@
+diff --git a/excalidraw-app/collab/Collab.tsx b/excalidraw-app/collab/Collab.tsx
+index 3c7e686d3..08f49c5ce 100644
+--- a/excalidraw-app/collab/Collab.tsx
++++ b/excalidraw-app/collab/Collab.tsx
+@@ -517,7 +517,7 @@ class Collab extends PureComponent<CollabProps, CollabState> {
+     try {
+       this.portal.socket = this.portal.open(
+         socketIOClient(import.meta.env.VITE_APP_WS_SERVER_URL, {
+-          transports: ["websocket", "polling"],
++          transports: ["websocket", "polling"], query: { gsessionid: roomId },
+         }),
+         roomId,
+         roomKey,

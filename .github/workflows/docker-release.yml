@@ -30,6 +30,8 @@ jobs:
         registry: ghcr.io
         username: ${{ github.actor }}
         password: ${{ secrets.GITHUB_TOKEN }}
+    - name: patch excalidraw with qurry varible
+      run: cd excalidraw && git apply ../excalidraw-qurry.patch && cd ..
     - name: Build and push latest
       run: CACHE_TO="type=local,dest=/tmp/.buildx-cache-main-new,mode=max" CACHE_FROM="type=local,src=/tmp/.buildx-cache-main" COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 RELEASE_TAG=latest docker compose build --push
     - name: Build and push tag

@@ -15,10 +15,27 @@ nameOverride: ""
 fullnameOverride: ""
 
 # For the vite frontend URL, make sure to include the correct protocol (http or https)
-viteFrontendUrl: "https://excalidraw.minikube.local"
+# but tls need to be set in the ingress if https is used.
+viteFrontendUrl: "http://excalidraw.minikube.local"
+
+# eksample of allowed origins: "https://eksample.com,https://eksample2.com"
+# `viteFrontendUrl` and `websocketFirebaseHandlerUrl` will allways be allowed as origins, remeber to add ws://`websocketFirebaseHandlerUrl no http or https`.
+allowedOrigins: "ws://excalidraw.minikube.local"
+
+# If replicaCount > 1, make sure to set `websocketFirebaseHandlerUrl` to a different URL than `viteFrontendUrl`, 
+# to not break excalidraws collab functionality.
+# Example: 
+# viteFrontendUrl: "http://excalidraw.minikube.local"
+# websocketFirebaseHandlerUrl: "http://excalidraw-ws-fire-handler.minikube.local"
+# the correct protocol also matters for `websocketFirebaseHandlerUrl`(http or https), but can differ from `viteFrontendUrl` protocol.
+# but tls need to be set in the ingress if https is used.
+# websocketFirebaseHandlerUrl: "http://excalidraw-ws-fire-handler.minikube.local"
+
 
 # Application log level. One of: "debug", "info", "warning", "error", "fatal", "panic"
 logLevel: "info"
+
+socketDebug: ""
 
 readinessProbe:
   httpGet:
@@ -37,7 +54,7 @@ service:
   # annotations: {}
   # loadBalancerIP: 172.16.0.1
 
-ingress:
+ingressMain:
   enabled: true
   className: ""
   annotations: {}
@@ -46,7 +63,25 @@ ingress:
       paths:
         - path: "/"
           pathType: Prefix
+  tls: []
 
+
+# If replicaCount > 1, make sure to enable ingressHashLoadbalancing and set `ingressMain.hosts` to a different URL than `ingressHashLoadbalancing.hosts`, 
+# to not break excalidraws collab functionality.
+# Example: 
+# viteFrontendUrl: "http://excalidraw.minikube.local"
+# websocketFirebaseHandlerUrl: "http://excalidraw-ws-fire-handler.minikube.local"
+# ingressMain.hosts: excalidraw.minikube.local
+# ingressHashLoadbalancing.hosts: excalidraw-ws-fire-handler.minikube.local
+ingressHashLoadbalancing:
+  enabled: false
+  className: ""
+  annotations: {}
+  hosts:
+    - host: excalidraw-ws-fire-handler.minikube.local
+      paths:
+        - path: "/"
+          pathType: Prefix
   tls: []
 
 
@@ -59,6 +94,12 @@ resources: {}
   #   memory: "100Mi"
   #   cpu: "100m"
 
+autoscaling:
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 5
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 80
 
 volumeMounts: []
 

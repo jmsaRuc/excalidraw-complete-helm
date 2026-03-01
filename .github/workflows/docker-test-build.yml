@@ -24,6 +24,8 @@ jobs:
         key: ${{ runner.os }}-buildx-app-${{ github.sha }}
         restore-keys: |
           ${{ runner.os }}-buildx-app
+    - name: patch excalidraw with qurry varible
+      run: cd excalidraw && git apply ../excalidraw-qurry.patch && cd ..
     - name: Build and Run
       run: CACHE_TO="type=local,dest=/tmp/.buildx-cache-app-new,mode=max" CACHE_FROM="type=local,src=/tmp/.buildx-cache-app" COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 RELEASE_TAG=${{ github.sha }} docker compose up --build -d
     - name: Wait for healthchecks

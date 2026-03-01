@@ -11,8 +11,8 @@ import (
 
 	"github.com/oklog/ulid/v2"
 	"github.com/redis/go-redis/v9"
-	"github.com/zishang520/engine.io/v2/utils"
-	socketio "github.com/zishang520/socket.io/v2/socket"
+	socketio "github.com/zishang520/socket.io/servers/socket/v3"
+	"github.com/zishang520/socket.io/v3/pkg/utils"
 )
 
 // PubSub implements a Redis-based Pub/Sub system for Socket.IO
@@ -72,16 +72,32 @@ func (m Message) MarshalBinary() (data []byte, err error) {
 func (m Message) hexDecode() (Message, error) {
 	if m.Args != nil {
 		for i, arg := range m.Args {
-			if str, ok := arg.(string); ok {
-				decoded, err := hex.DecodeString(str)
-				if err != nil {
-					return m, err
-				}
-				m.Args[i] = decoded
+			str, ok := arg.(string)
+			if !ok {
+				continue
 			}
+			// only decode if it looks like hex; otherwise keep the string
+			if len(str)%2 != 0 || !isHex(str) {
+				continue
+			}
+			decoded, err := hex.DecodeString(str)
+			if err != nil {
+				continue // keep original string instead of failing the whole message
+			}
+			m.Args[i] = decoded
 		}
 	}
 	return m, nil
+}
+
+// helper to check hex characters
+func isHex(s string) bool {
+	for _, c := range s {
+		if !('0' <= c && c <= '9') && !('a' <= c && c <= 'f') && !('A' <= c && c <= 'F') {
+			return false
+		}
+	}
+	return true
 }
 
 func getPublishPayload(r *PubSub, room socketio.Room, user socketio.SocketId, event string, args ...any) ([]byte, error) {
@@ -133,37 +149,50 @@ func (r *PubSub) Start() error {
 
 			switch mNoHex.Event {
 			case "init-room":
-				utils.Log().Printf("init room %v\n", mNoHex.Room)
+				utils.Log().Printf("published: init room %v\n", mNoHex.Room)
 				r.server.To(mNoHex.Room).Emit("init-room")
 			case "join-room":
 				r.server.In(mNoHex.Room).FetchSockets()(func(usersInRoom []*socketio.RemoteSocket, _ error) {
 					for _, s := range usersInRoom {
 						if s.Id() == mNoHex.User {
+							utils.Log().Printf("published: Socket %v has joined %v\n", mNoHex.User, mNoHex.Room)
 							s.Join(mNoHex.Room)
 							break
 						}
 					}
 				})
-				utils.Log().Printf("Socket %v has joined %v\n", mNoHex.User, mNoHex.Room)
 			case "first-in-room":
+				utils.Log().Printf("published: emit first user %v in room %v\n", mNoHex.User, mNoHex.Room)
 				r.server.To(mNoHex.Room).Emit(mNoHex.Event)
+
 			case "new-user":
-				utils.Log().Printf("emit new user %v in room %v\n", mNoHex.User, mNoHex.Room)
+				utils.Log().Printf("published: emit new user %v in room %v\n", mNoHex.User, mNoHex.Room)
 				r.server.To(mNoHex.Room).Emit(mNoHex.Event, mNoHex.User)
+
 			case "room-user-change":
-				utils.Log().Printf(" room %v has users %v", mNoHex.Room, mNoHex.Args[0])
+				utils.Log().Printf("published: room %v has users %v", mNoHex.Room, mNoHex.Args[0])
 				r.server.In(mNoHex.Room).Emit(mNoHex.Event, mNoHex.Args[0])
+
 			case "client-broadcast":
-				utils.Log().Printf(" user %v sends update to room %v\n", mNoHex.User, mNoHex.Room)
+				utils.Log().Printf("published: user %v sends update to room %v\n", mNoHex.User, mNoHex.Room)
 				r.server.To(mNoHex.Room).Emit(mNoHex.Event, mNoHex.Args[0], mNoHex.Args[1])
+
 			case "client-volatile-broadcast":
-				utils.Log().Printf(" user %v sends volatile update to room %v\n", mNoHex.User, mNoHex.Room)
-				r.server.Volatile().To(mNoHex.Room).Emit(mNoHex.Event, mNoHex.Args[0], mNoHex.Args[1])
+				utils.Log().Printf("published: user %v sends volatile update to room %v\n", mNoHex.User, mNoHex.Room)
+				// dont use mNoHex.Event here, as we want to always use "client-broadcast" for volatile messages
+				r.server.Volatile().To(mNoHex.Room).Emit("client-broadcast", mNoHex.Args[0], mNoHex.Args[1])
+
+			case "room-user-change-leaving":
+				utils.Log().Printf("published: leaving user, room %v has users %v (leaving)\n", mNoHex.Room, mNoHex.Args[0])
+				// dont use mNoHex.Event here, as we want use "room-user-change" for this event
+				r.server.In(mNoHex.Room).Emit("room-user-change", mNoHex.Args[0])
+
 			case "user-left":
-				utils.Log().Printf(" user %v left room %v\n", mNoHex.User, mNoHex.Room)
+				utils.Log().Printf("published: user %v left room %v\n", mNoHex.User, mNoHex.Room)
 				r.server.To(mNoHex.Room).Emit(mNoHex.Event)
+
 			default:
-				utils.Log().Printf("%v %v", mNoHex.Event, mNoHex.Room)
+				utils.Log().Printf("published: !DEFAULT EVENT! %v %v", mNoHex.Event, mNoHex.Room)
 				r.server.To(mNoHex.Room).Emit(mNoHex.Event)
 			}
 		}
