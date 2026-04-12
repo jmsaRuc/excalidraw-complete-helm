@@ -15,7 +15,7 @@ RUN echo 'VITE_APP_LIBRARY_BACKEND="$VITE_FRONTEND_URL/libraries"' >> .env.produ
 RUN echo 'VITE_APP_AI_BACKEND="$VITE_FRONTEND_URL/ai/"' >> .env.production
 RUN echo 'VITE_APP_PLUS_LP="$VITE_FRONTEND_URL/plus/"' >> .env.production
 RUN echo 'VITE_APP_PLUS_APP="$VITE_FRONTEND_URL/app/"' >> .env.production
-RUN echo 'VITE_APP_WS_SERVER_URL="$WEBSOCKET_FIREBASE_HANDLER_URL"' >> .env.production
+RUN echo 'VITE_APP_WS_SERVER_URL="$VITE_FRONTEND_URL"' >> .env.production
 RUN echo 'VITE_APP_FIREBASE_CONFIG={"apiKey":"AIzaSyAd15pYlMci_xIp9ko6wkEsDzAAA0Dn0RU","authDomain":"","databaseURL":"","projectId":"excalidraw-room-persistence","storageBucket":"","messagingSenderId":"654800341332","appId":"1:654800341332:web:4a692de832b55bd57ce0c1"}' >> .env.production
 RUN echo 'VITE_APP_DISABLE_TRACKING=yes' >> .env.production
 

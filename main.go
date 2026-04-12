@@ -12,7 +12,6 @@ import (
 	"fmt"
 	"io"
 	"io/fs"
-	"math/rand/v2"
 	"net/http"
 	"os"
 	"os/signal"
@@ -86,35 +85,6 @@ func handleUI(config *config.Config) http.Handler {
 		logrus.WithFields(urlField).Info("Frontend URL configuration")
 	}
 
-	// Create if webSocketFirebaseHandler url is set and determine if SSL is used
-	wsUseSSL := strings.Split(config.WebSocketFirebaseHandlerURL, "://")[0] == "https"
-	wsFireHandlerBaseURL := strings.Split(config.WebSocketFirebaseHandlerURL, "://")[1]
-
-	if wsFireHandlerBaseURL != frontendBaseURL {
-		// Create a log field for the WebSocket Firebase Handler URL and SSL status
-		wsURLField := logrus.Fields{
-			"webSocketFirebaseHandlerBaseUrl": wsFireHandlerBaseURL,
-			"webSocketFirebaseHandlerIsSSL":   wsUseSSL,
-		}
-
-		logrus.WithFields(wsURLField).Info("WebSocket Firebase Handler URL configuration")
-	} else {
-		logrus.Info("WebSocket Firebase Handler URL is not set; defaulting to Frontend URL with same SSL settings")
-	}
-
-	if wsFireHandlerBaseURL == frontendBaseURL && config.HAActive {
-		frontAndWsField := logrus.Fields{
-			"frontendBaseUrl":                 frontendBaseURL,
-			"webSocketFirebaseHandlerBaseUrl": wsFireHandlerBaseURL,
-		}
-
-		logrus.Warn(
-			"WebSocketFirebaseHandler URL is not different from FrontendURL while HA is active, ",
-			"this will break excalidraw collab if deployed using multiple instances/replicas.",
-		)
-		logrus.WithFields(frontAndWsField).Info("")
-	}
-
 	// Let's hot-patch all calls to firebase DB
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		originalPath := r.URL.Path
@@ -144,27 +114,15 @@ func handleUI(config *config.Config) http.Handler {
 
 		// Replace firebase URLs with the base URL
 		// and adjust SSL settings if necessary
-		//as `wsFireHandlerBaseURL` is the same as frontendbaseURL when not set, we can just always replace the firebase URL with `wsFireHandlerBaseURL`.
-		modifiedContent := strings.ReplaceAll(string(fileContent), "firestore.googleapis.com", wsFireHandlerBaseURL)
+		modifiedContent := strings.ReplaceAll(string(fileContent), "firestore.googleapis.com", frontendBaseURL)
 
-		//add time code to projectid: excalidraw-room-persistence to facilitate better loadbalancing in HA mode.
-		modifiedContent = strings.ReplaceAll(modifiedContent, "excalidraw-room-persistence", fmt.Sprintf("excalidraw-room-persistence-%d", rand.IntN(1000)))
-
-		//we only need to check 4 posible states for SLL settings, as `wsFireHandlerBaseURL` is the same as `frontendBaseURL` when not set.
+		// Adjust SSL settings in the content based on the frontend URL configuration
 		switch {
-		case frontendBaseURL == wsFireHandlerBaseURL && useSSL:
+		case useSSL:
 			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!1", "cN=!0")
 			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!1", "ssl:!0")
 
-		case frontendBaseURL == wsFireHandlerBaseURL && !useSSL:
-			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!0", "cN=!1")
-			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:!1")
-
-		case frontendBaseURL != wsFireHandlerBaseURL && wsUseSSL:
-			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!1", "cN=!0")
-			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!1", "ssl:!0")
-
-		case frontendBaseURL != wsFireHandlerBaseURL && !wsUseSSL:
+		case !useSSL:
 			modifiedContent = strings.ReplaceAll(modifiedContent, "cN=!0", "cN=!1")
 			modifiedContent = strings.ReplaceAll(modifiedContent, "ssl:!0", "ssl:!1")
 
@@ -202,10 +160,10 @@ func handleUI(config *config.Config) http.Handler {
 func setupRouter(config *config.Config, documentStore core.DocumentStore, redisClient *rds.Client) *chi.Mux {
 	r := chi.NewRouter()
 	r.Use(middleware.Logger)
-	allowedOrigins := config.AllowedOrigins()
-	logrus.WithField("allowedOrigins", allowedOrigins).Info("Configured allowed origins for CORS")
+	corsAllowedOrigins := config.CorsAllowedOrigins()
+	logrus.WithField("corsAllowedOrigins", corsAllowedOrigins).Info("Configured allowed origins for CORS")
 	r.Use(cors.Handler(cors.Options{
-		AllowedOrigins:   allowedOrigins,
+		AllowedOrigins:   corsAllowedOrigins,
 		AllowedMethods:   []string{"GET", "POST", "PUT", "DELETE", "PATCH", "OPTIONS"},
 		AllowedHeaders:   []string{"Accept", "Authorization", "Content-Type", "Content-Length", "X-CSRF-Token", "Token", "session", "Origin", "Host", "Connection", "Accept-Encoding", "Accept-Language", "X-Requested-With", "X-Goog-Api-Client", "X-Firebase-GMPID", "X-HTTP-Session-Id", "X-Firebase-Client"},
 		ExposedHeaders:   []string{"X-HTTP-Session-Id", "X-Goog-Channel-Id", "X-Goog-Channel-Token"},
@@ -217,9 +175,9 @@ func setupRouter(config *config.Config, documentStore core.DocumentStore, redisC
 		r.Get("/Listen/channel", firebase.HandleFetchDocument(config, redisClient))
 	})
 	r.Route("/v1/projects/{project_id}/databases/{database_id}", func(r chi.Router) {
-		r.Options("/documents:commit", firebase.HandleCors(allowedOrigins))
+		r.Options("/documents:commit", firebase.HandleCors(corsAllowedOrigins))
 		r.Post("/documents:commit", firebase.HandleBatchCommit(config, redisClient))
-		r.Options("/documents:batchGet", firebase.HandleCors(allowedOrigins))
+		r.Options("/documents:batchGet", firebase.HandleCors(corsAllowedOrigins))
 		r.Post("/documents:batchGet", firebase.HandleBatchGet(config, redisClient))
 
 	})
@@ -530,7 +488,7 @@ func main() {
 	opts.SetAllowEIO3(false)
 	opts.SetAllowUpgrades(true)
 	opts.SetCors(&types.Cors{
-		Origin:      strings.Join(config.AllowedOrigins(), ", "),
+		Origin:      strings.Join(config.CorsAllowedOrigins(), ", "),
 		Credentials: true,
 	})
 

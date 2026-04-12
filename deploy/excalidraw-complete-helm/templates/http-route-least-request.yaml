@@ -1,0 +1,61 @@
+{{- if .Values.gateway.enabled -}}
+{{- if .Capabilities.APIVersions.Has "gateway.networking.k8s.io/v1" -}}
+{{- $fullName := include "excalidraw-complete.fullname" . -}}
+{{- $svcPort := .Values.service.port -}}
+{{- $corsAllowedOrigins := .Values.corsAllowedOrigins -}}
+apiVersion: gateway.networking.k8s.io/v1
+kind: HTTPRoute
+metadata:
+  name: {{ $fullName }}-least-requests
+spec:
+  parentRefs:
+  - name: {{ .Values.gateway.gatewayName | default $fullName }}
+    {{- if .Values.gateway.namespace }}
+    namespace: {{ .Values.gateway.namespace }}
+    {{- end }}
+    group: gateway.networking.k8s.io
+    kind: Gateway
+  {{- if .Values.gateway.hostname }}
+  hostnames:
+  - {{ .Values.gateway.hostname | quote }}
+  {{- end }}
+  rules:
+  {{- range .Values.gateway.leastRequestsRoutes }}
+  - matches:
+    {{- if .matches }}
+    {{- range .matches }}
+    - path:
+        type: {{ .path.type | default "PathPrefix" }}
+        value: {{ .path.value | quote }}
+      {{- if .headers }}
+      headers:
+      {{- range .headers }}
+      - name: {{ .name }}
+        value: {{ .value }}
+      {{- end }}
+      {{- end }}
+      {{- if .queryParams }}
+      queryParams:
+      {{- range .queryParams }}
+      - name: {{ .name }}
+        value: {{ .value }}
+      {{- end }}
+      {{- end }}
+    {{- end }}
+    {{- else }}
+    - path:
+        type: PathPrefix
+        value: /
+    {{- end }}
+    {{- if .filters }}
+    filters:
+    {{- toYaml .filters | nindent 4 }}
+    {{- end }}
+    backendRefs:
+    - group: ""
+      kind: Service
+      name: {{ $fullName }}
+      port: {{ $svcPort }}
+  {{- end }}
+{{- end }}
+{{- end }}

@@ -14,22 +14,13 @@ imagePullSecrets: []
 nameOverride: ""
 fullnameOverride: ""
 
-# For the vite frontend URL, make sure to include the correct protocol (http or https)
-# but tls need to be set in the ingress if https is used.
-viteFrontendUrl: "http://excalidraw.minikube.local"
+# For the vite frontend URL, make sure to include the correct protocol (http or https).
+# If https is used, tls is needed to be set in gateway.
+frontendUrl: "http://excalidraw.minikube.local"
 
-# eksample of allowed origins: "https://eksample.com,https://eksample2.com"
-# `viteFrontendUrl` and `websocketFirebaseHandlerUrl` will allways be allowed as origins, remeber to add ws://`websocketFirebaseHandlerUrl no http or https`.
-allowedOrigins: "ws://excalidraw.minikube.local"
+# add websocket url to allowed origins, make sure to set the correct protocol (ws or wss) and host if you change the default value
+corsAllowedOrigins: "ws://excalidraw.minikube.local"
 
-# If replicaCount > 1, make sure to set `websocketFirebaseHandlerUrl` to a different URL than `viteFrontendUrl`, 
-# to not break excalidraws collab functionality.
-# Example: 
-# viteFrontendUrl: "http://excalidraw.minikube.local"
-# websocketFirebaseHandlerUrl: "http://excalidraw-ws-fire-handler.minikube.local"
-# the correct protocol also matters for `websocketFirebaseHandlerUrl`(http or https), but can differ from `viteFrontendUrl` protocol.
-# but tls need to be set in the ingress if https is used.
-# websocketFirebaseHandlerUrl: "http://excalidraw-ws-fire-handler.minikube.local"
 
 
 # Application log level. One of: "debug", "info", "warning", "error", "fatal", "panic"
@@ -37,14 +28,8 @@ logLevel: "info"
 
 socketDebug: ""
 
-readinessProbe:
-  httpGet:
-    path: /healthz
-    port: http
-
 service:
-  annotations: 
-    traefik.ingress.kubernetes.io/service.passhostheader: "true"
+  annotations: {}
   type: ClusterIP
   port: 8080
   # Annotations applied for services such as externalDNS or
@@ -54,36 +39,49 @@ service:
   # annotations: {}
   # loadBalancerIP: 172.16.0.1
 
-ingressMain:
+# Envoy gatway is a prerequisite for the helm chart, make sure you have the envoy gateway installed in your cluster, and a gateway class deployed with the same name as specified in `gatewayClassName`.
+# See https://gateway.envoyproxy.io/docs/tasks/quickstart/
+# Other gateway implementations might be supported in the future, but currently only envoy is supported and tested.  
+gateway:
   enabled: true
-  className: ""
+  gatewayClassName: envoy
   annotations: {}
-  hosts:
-    - host: excalidraw.minikube.local
-      paths:
-        - path: "/"
-          pathType: Prefix
-  tls: []
+    # Example of annotations for cert-manager to automatically provision TLS certificates for the gateway
+    # cert-manager.io/cluster-issuer: "my-issuer"
+  hostname: excalidraw.minikube.local
+  listeners:
+  # If you don't need TLS, you can just use the HTTP listener and set the correct host and port. Remeber to adjust the `viteFrontendUrl` accordingly if you change the host and protocol.
+    - name: http
+      allowedRoutes:
+          namespaces:
+            from: Same
+      port: 80
+      protocol: HTTP
+   # Example of a HTTPS listener configuration for the gateway, make sure to set the correct TLS secret and hostname if you enable this.
+   # - name: https
+   #   allowedRoutes:
+   #       namespaces:
+   #         from: Same
+   #   port: 443
+   #   protocol: HTTPS
+   #   tls: 
+   #     certificateRefs:
+   #       - name: example-tls-secret
 
-
-# If replicaCount > 1, make sure to enable ingressHashLoadbalancing and set `ingressMain.hosts` to a different URL than `ingressHashLoadbalancing.hosts`, 
-# to not break excalidraws collab functionality.
-# Example: 
-# viteFrontendUrl: "http://excalidraw.minikube.local"
-# websocketFirebaseHandlerUrl: "http://excalidraw-ws-fire-handler.minikube.local"
-# ingressMain.hosts: excalidraw.minikube.local
-# ingressHashLoadbalancing.hosts: excalidraw-ws-fire-handler.minikube.local
-ingressHashLoadbalancing:
-  enabled: false
-  className: ""
-  annotations: {}
-  hosts:
-    - host: excalidraw-ws-fire-handler.minikube.local
-      paths:
-        - path: "/"
-          pathType: Prefix
-  tls: []
-
+  # Two routes are needed to handle the consistent hash loadbalancing for websocket and long-polling requests, and the least request routing for the rest of the endpoints.
+  consistentHashRoutes:
+    - matches:
+      - path:
+          type: PathPrefix
+          value: "/socket.io/"
+      - path:
+          type: PathPrefix
+          value: "/google.firestore.v1.Firestore/"
+  leastRequestsRoutes:
+    - matches:
+      - path:
+          type: PathPrefix
+          value: "/"
 
 # Resource requests and limits
 resources: {}   
@@ -106,11 +104,29 @@ volumeMounts: []
 volumes: []
 
 readinessProbe:
+  initialDelaySeconds: 5
+  periodSeconds: 10
   httpGet:
     path: /
     port: excalidraw-port
+
+liveinessProbe:
   initialDelaySeconds: 5
   periodSeconds: 10
+  httpGet:
+    path: /
+    port: excalidraw-port
+
+
+startupProbe:
+  initialDelaySeconds: 15
+  periodSeconds: 5
+  timeoutSeconds: 5
+  successThreshold: 1
+  failureThreshold: 60
+  httpGet:
+    path: /
+    port: excalidraw-port
 
 ## Configuration values for the redis deployment.
 redis:

@@ -1,8 +1,8 @@
 apiVersion: v2
 name: excalidraw-complete-helm
 
-version: v0.1.0-dev5
-appVersion: v0.1.0-dev5
+version: v0.1.0-dev7
+appVersion: v0.1.0-dev7
 
 description: A Helm chart for Kubernetes to deploy Excalidraw Complete
 

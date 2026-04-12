@@ -70,13 +70,13 @@ We truncate at 63 chars because some Kubernetes name fields are limited to this 
 {{- end -}}
 
 {{/*
-Create automatic allowedOrigins value based on `viteFrontendUrl` and `websocketFirebaseHandlerUrl` and `allowedOrigins`.
+Create automatic allowedOrigins value based on `frontendUrl` and `corsAllowedOrigins`.
 */}}
-{{- define "excalidraw-complete.allowedOrigins" -}}
-{{- if .Values.allowedOrigins }}
-{{- printf "%s,%s,%s" .Values.viteFrontendUrl .Values.websocketFirebaseHandlerUrl .Values.allowedOrigins -}}
+{{- define "excalidraw-complete.corsAllowedOrigins" -}}
+{{- if .Values.corsAllowedOrigins }}
+{{- printf "%s,%s,%s" .Values.frontendUrl .Values.corsAllowedOrigins -}}
 {{- else -}}
-{{- printf "%s,%s" .Values.viteFrontendUrl .Values.websocketFirebaseHandlerUrl -}}
+{{- printf "%s,%s" .Values.frontendUrl -}}
 {{- end -}}
 {{- end -}}
 

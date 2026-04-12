@@ -29,16 +29,19 @@ spec:
           name: excalidraw-port
         readinessProbe:
           {{- toYaml .Values.readinessProbe | nindent 10 }}
-          periodSeconds: 10
+        livenessProbe:
+          {{- toYaml .Values.liveinessProbe | nindent 10 }}
+        startupProbe:
+          {{- toYaml .Values.startupProbe | nindent 10 }}
         resources:
           {{- toYaml .Values.resources | nindent 10 }}
         env:
         - name: STORAGE_TYPE
           value: "postgres"
         - name: VITE_FRONTEND_URL
-          value: "{{ .Values.viteFrontendUrl }}"
-        - name: ALLOWED_ORIGINS
-          value: "{{ .Values.allowedOrigins }}"
+          value: "{{ .Values.frontendUrl }}"
+        - name: CORS_ALLOWED_ORIGINS
+          value: "{{ .Values.corsAllowedOrigins | join "," }}"
         - name: HOST
           value: "0.0.0.0"
         - name: PORT
@@ -49,8 +52,6 @@ spec:
           value: "{{ default "" .Values.socketDebug }}"
         - name: HA_ACTIVE
           value: "true"
-        - name: WEBSOCKET_FIREBASE_HANDLER_URL
-          value: "{{ .Values.websocketFirebaseHandlerUrl }}"
         - name: REDIS_HOST
           value: {{ template "excalidraw-complete.redis.host" . }}
         - name: REDIS_PORT
