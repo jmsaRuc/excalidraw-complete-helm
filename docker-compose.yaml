@@ -1,6 +1,8 @@
 x-excalidraw: &service-excalidraw
   build:
     context: .
+    additional_contexts:
+        tmp_dir: /tmp
     cache_from:
       - ${CACHE_FROM:-type=local,src=./tmp/.buildx-cache}
     cache_to:
