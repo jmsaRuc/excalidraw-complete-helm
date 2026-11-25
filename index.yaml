@@ -153,6 +153,36 @@ entries:
     version: v0.1.0-dev4
   - apiVersion: v2
     appVersion: v0.1.0-dev7
+    created: "2026-11-25T07:32:49.275941346Z"
+    dependencies:
+    - condition: postgres.enabled
+      name: postgres
+      repository: oci://registry-1.docker.io/cloudpirates
+      version: 0.11.5
+    description: A Helm chart for Kubernetes to deploy Excalidraw Complete
+    digest: 6524348deb059d6013695b74daa3e70837449cef41278f609c0cf37bdfcf97b0
+    keywords:
+    - excalidraw
+    - excalidraw-complete
+    - excalidraw-complete-helm
+    - helm
+    - kubernetes
+    - chart
+    - whiteboard
+    - sketches
+    - visualizations
+    maintainers:
+    - email: jensmikkelandersen@gmail.com
+      name: Jens Mikkel Shcroll Andersen
+    name: excalidraw-complete-helm
+    sources:
+    - https://github.com/jmsaRuc/excalidraw-complete-helm
+    type: application
+    urls:
+    - https://jmsaruc.github.io/excalidraw-complete-helm/excalidraw-complete-helm-v0.1.0-dev11.tgz
+    version: v0.1.0-dev11
+  - apiVersion: v2
+    appVersion: v0.1.0-dev7
     created: "2026-11-25T07:26:00.44057922Z"
     dependencies:
     - condition: postgres.enabled
@@ -181,4 +211,4 @@ entries:
     urls:
     - https://jmsaruc.github.io/excalidraw-complete-helm/excalidraw-complete-helm-v0.1.0-dev10.tgz
     version: v0.1.0-dev10
-generated: "2026-11-25T07:26:00.437951072Z"
+generated: "2026-11-25T07:32:49.273579255Z"
