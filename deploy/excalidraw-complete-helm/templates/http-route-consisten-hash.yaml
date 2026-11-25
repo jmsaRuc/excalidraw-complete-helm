@@ -9,14 +9,12 @@ metadata:
   name: {{ $fullName }}-consistent-hash
 spec:
   parentRefs:
-  - name: {{ .Values.gateway.gatewayName | default $fullName }}
-    {{- if .Values.gateway.namespace }}
-    namespace: {{ .Values.gateway.namespace }}
-    {{- end }}
+  - name: {{ .Values.gateway.listenerSetNameOverride | default (printf "%s-listener-set" $fullName) }}
+    namespace: {{ .Release.Namespace }}
     group: gateway.networking.k8s.io
-    kind: Gateway
+    kind: ListenerSet
   {{- if .Values.gateway.hostname }}
-  hostnames:
+  hostnames: 
   - {{ .Values.gateway.hostname | quote }}
   {{- end }}
   rules:

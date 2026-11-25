@@ -44,10 +44,15 @@ service:
 # Other gateway implementations might be supported in the future, but currently only envoy is supported and tested.  
 gateway:
   enabled: true
-  gatewayClassName: envoy
+  # anotation for the listener set, e.g., for cert-manager to automatically provision TLS certificates
   annotations: {}
     # Example of annotations for cert-manager to automatically provision TLS certificates for the gateway
     # cert-manager.io/cluster-issuer: "my-issuer"
+  listenerSetNameOverride: ""
+  # Reference to the parent gateway resource (name and namespace)
+  parentRef: 
+    name: my-gateway
+    namespace: my-gateway-namespace
   hostname: excalidraw.minikube.local
   listeners:
   # If you don't need TLS, you can just use the HTTP listener and set the correct host and port. Remeber to adjust the `viteFrontendUrl` accordingly if you change the host and protocol.

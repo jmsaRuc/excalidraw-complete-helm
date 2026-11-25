@@ -4,15 +4,20 @@
 {{- $svcPort := .Values.service.port -}}
 {{- $hostName := .Values.gateway.hostname | quote -}}
 apiVersion: gateway.networking.k8s.io/v1
-kind: Gateway
+kind: ListenerSet
 metadata:
-  name: {{ $fullName }}
+  name: {{ .Values.gateway.listenerSetNameOverride | default (printf "%s-listener-set" $fullName) }}
+  namespace: {{ .Release.Namespace }}
   {{- with .Values.gateway.annotations }}
   annotations:
     {{- toYaml . | nindent 4 }}
   {{- end }}
 spec:
-  gatewayClassName: {{ .Values.gateway.gatewayClassName }}
+  parentRef:
+    name: {{ .Values.gateway.parentRef.name }}
+    kind: Gateway
+    namespace: {{ .Values.gateway.parentRef.namespace }}
+    group: gateway.networking.k8s.io
   listeners:
   {{- range .Values.gateway.listeners }}
   - name: {{ .name }}
