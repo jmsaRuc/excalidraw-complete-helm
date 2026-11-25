@@ -37,6 +37,7 @@ func (c *Client) getClient(ctx context.Context) (client *redis.Client, err error
 		return nil, err
 	}
 	return c.RedisClient, nil
+
 }
 
 // CloseClient closes the Redis client connection.

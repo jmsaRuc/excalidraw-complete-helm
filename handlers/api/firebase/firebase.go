@@ -127,6 +127,10 @@ func getRoomSessionKey(roomID string) string {
 	return fmt.Sprintf("firestore-room-session:%s", roomID)
 }
 
+func getDocumentDataKey(roomID string) string {
+	return fmt.Sprintf("firebase-document-%s", roomID)
+}
+
 func saveSessionToRedis(cacheStore *redis.CacheStore, session *ListenSession) error {
 	sessionBytes, err := json.Marshal(session)
 	if err != nil {
@@ -221,31 +225,17 @@ func HandleBatchCommit(config *config.Config, redisClient *redis.Client) http.Ha
 
 		// extract document ID from path
 		// - path format: "projects/excalidraw-room-persistence/databases/(default)/documents/scenes/abc123"
-		docID := extractRoomID(data.Writes[0].Update.Name)
-
-		// if HA is active, get existing saved items from redis, then update with new items
+		roomID := extractRoomID(data.Writes[0].Update.Name)
+		dataKey := getDocumentDataKey(roomID)
 		if config.HAActive {
-			savedItemsRedis := make(map[string]interface{})
-			savedData, err := cacheStore.GetSavedData("firebase-documents")
-			if err != nil || len(savedData) == 0 {
-				logrus.Info("No saved items yet, continuing")
-			} else {
-				savedItemsRedis = savedData
-			}
-
-			savedItemsRedis[docID] = data.Writes[0].Update.Fields
-			savedItemsLocal = savedItemsRedis
-		} else {
-			savedItemsLocal[docID] = data.Writes[0].Update.Fields
-		}
-
-		if config.HAActive {
-			if err := cacheStore.SetSavedData("firebase-documents", savedItemsLocal); err != nil {
+			if err := cacheStore.SetSavedData(dataKey, data.Writes[0].Update.Fields); err != nil {
 				logrus.Errorf("Failed to save data to redis: %v", err)
 				render.Status(r, http.StatusInternalServerError)
 				cancel()
 				return
 			}
+		} else {
+			savedItemsLocal[roomID] = data.Writes[0].Update.Fields
 		}
 
 		render.Status(r, http.StatusOK)
@@ -298,30 +288,32 @@ func HandleBatchGet(config *config.Config, redisClient *redis.Client) http.Handl
 		// extract document ID from path
 		// - path format: "projects/excalidraw-room-persistence/databases/(default)/documents/scenes/abc123"
 		docPath := data.Documents[0]
-		key := extractRoomID(docPath)
-		logrus.Infof("Got key %v and docPath %v", key, docPath)
-
+		roomID := extractRoomID(docPath)
+		dataKey := getDocumentDataKey(roomID)
+		logrus.Infof("Got roomID %v and docPath %v", roomID, docPath)
+		var fields interface{}
+		found := false
 		// if HA is active, get saved items from redis, else use local map
 		if config.HAActive {
-			savedData, err := cacheStore.GetSavedData("firebase-documents")
+			savedData, err := cacheStore.GetSavedData(dataKey)
 			if err != nil {
 				logrus.Errorf("Failed to get data from redis: %v", err)
 				cancel()
 			}
-			// Only override local cache if we actually have data.
-			if len(savedData) > 0 {
-				savedItemsLocal = savedData
+			if savedData != nil && err == nil {
+				fields = savedData
+				found = true
 			} else {
-				logrus.Info("Redis returned empty or nil; keeping existing local cache")
+				logrus.Info("Redis returned empty or nil")
 			}
+		} else {
+			fields, found = savedItemsLocal[roomID]
 		}
-
-		fields, ok := savedItemsLocal[key]
 
 		// the timestamps must be UTC, i.e. no zone offsets allowed
 		timestamp := time.Now().UTC().Format(time.RFC3339)
-		if !ok {
-			logrus.Infof("Missing key, in docpath: %v", docPath)
+		if !found {
+			logrus.Infof("Missing roomID, in docpath: %v", docPath)
 			render.JSON(w, r, []BatchGetEmptyResponse{BatchGetEmptyResponse{
 				Missing:  docPath,
 				ReadTime: timestamp,
@@ -332,7 +324,7 @@ func HandleBatchGet(config *config.Config, redisClient *redis.Client) http.Handl
 			}
 			return
 		}
-		logrus.Infof("Existing key, in docpath: %v", docPath)
+		logrus.Infof("Existing roomID, in docpath: %v", docPath)
 		render.Status(r, http.StatusOK)
 		render.JSON(w, r, []BatchGetExistsResponse{BatchGetExistsResponse{
 			Found: FoundInfoResponse{
@@ -654,27 +646,31 @@ func handleLongPoll(w http.ResponseWriter, r *http.Request, cfg *config.Config, 
 			return
 		}
 	}
+
+	// Load document data
 	docPath := session.DocumentPath
 	roomID := extractRoomID(session.DocumentPath)
 	targetID := session.TargetID
 	currentAID := session.AID
-
-	// Load document data
+	dataKey := getDocumentDataKey(roomID)
+	var fields interface{}
+	found := false
 	if cfg.HAActive && cacheStore != nil {
-		savedData, err := cacheStore.GetSavedData("firebase-documents")
+		savedData, err := cacheStore.GetSavedData(dataKey)
 		if err != nil {
-			fmt.Printf("redis get error: %v\n", err)
+			logrus.Errorf("redis get error: %v", err)
 			cancel()
 		}
-		// Only override local cache if we actually have data.
-		if len(savedData) > 0 {
-			savedItemsLocal = savedData
+		if savedData != nil && err == nil {
+			fields = savedData
+			found = true
 		} else {
-			fmt.Println("redis returned empty or nil; keeping existing local cache")
+			logrus.Infof("redis returned empty or nil; keeping existing local cache")
 		}
+	} else {
+		fields, found = savedItemsLocal[roomID]
 	}
 
-	fields, found := savedItemsLocal[roomID]
 	timestamp := time.Now().UTC().Format("2006-01-02T15:04:05.000000Z")
 
 	// Build response array matching excalidraw.com's exact format

@@ -11,10 +11,6 @@ spec:
       kind: HTTPRoute
       name: {{ $fullName }}-least-requests
   loadBalancer:
-    type: ConsistentHash
-    consistentHash:
-      type: QueryParams
-      queryParams:
-        - name: gsessionid
+    type: LeastRequest
 {{- end -}}
 {{- end -}}

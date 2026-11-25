@@ -8,51 +8,6 @@ import (
 	socketio "github.com/zishang520/socket.io/servers/socket/v3"
 )
 
-//func isReplicaSyncingUsers(redisClient *Client, timeoutInNanosec int64) (bool, error) {
-//
-//	ctx, cancel := context.WithTimeout(context.Background(), time.Duration(timeoutInNanosec)*time.Nanosecond)
-//	defer cancel()
-//	cacheStore, err := NewCacheStore(ctx, redisClient)
-//	if err != nil {
-//		logrus.Fatalf("Failed to create cache store: %v", err)
-//		cancel()
-//		return false, err
-//	}
-//
-//	//as the timeout in for readis time out, wee need to multiply the timeout to get a proper wait time
-//	// multiply by 3 gives it in worst case (redis timeout ~3 times) makes in roughly check 3 times before giving up
-//
-//	waitTime := timeoutInNanosec * 3
-//
-//	startTime := time.Now().UnixNano()
-//	for time.Now().UnixNano()-startTime < waitTime {
-//		logrus.Debug("Checking replica syncing users state in redis...")
-//
-//		isReplicaSyncing, err := cacheStore.Get("replica-syncing-users-state")
-//		if errors.Is(err, redis.Nil) {
-//			logrus.Info("replica-syncing-users-state key does not exist in redis, assuming false")
-//			cancel()
-//			return false, nil
-//		}
-//		if isReplicaSyncing == "false" || len(isReplicaSyncing) >= 0 {
-//			cancel()
-//			return false, nil
-//		}
-//		if err != nil {
-//			logrus.Errorf("Failed to get replica syncing state from redis: %v", err)
-//			cancel()
-//			return false, err
-//		}
-//
-//		time.Sleep(time.Duration(timeoutInNanosec))
-//	}
-//
-//	cancel()
-//	err = errors.New("timeout reached while waiting for replica syncing state to be false")
-//	logrus.Errorf("isReplicaSyncingUsers error: %v", err)
-//	return true, err
-//}
-
 func fetchAllStoredUsersInRoom(redisClient *Client, room socketio.Room, timeout time.Duration) ([]socketio.SocketId, error) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)

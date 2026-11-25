@@ -50,7 +50,7 @@ func (c *CacheStore) Get(key string) (string, error) {
 }
 
 // GetSavedData retrieves saved items from Redis for the specified key.
-func (c *CacheStore) GetSavedData(key string) (map[string]interface{}, error) {
+func (c *CacheStore) GetSavedData(key string) (interface{}, error) {
 	existingFields, err := c.Get(key)
 	if errors.Is(err, redis.Nil) {
 		return nil, nil
@@ -58,7 +58,7 @@ func (c *CacheStore) GetSavedData(key string) (map[string]interface{}, error) {
 	if err != nil {
 		return nil, err
 	}
-	var savedItems map[string]any
+	var savedItems interface{}
 	err = json.Unmarshal([]byte(existingFields), &savedItems)
 	if err != nil {
 		return nil, err
@@ -67,7 +67,7 @@ func (c *CacheStore) GetSavedData(key string) (map[string]interface{}, error) {
 }
 
 // SetSavedData saves the provided items in Redis under the specified key.
-func (c *CacheStore) SetSavedData(key string, savedItems map[string]interface{}) error {
+func (c *CacheStore) SetSavedData(key string, savedItems interface{}) error {
 	fieldsByte, err := json.Marshal(savedItems)
 	if err != nil {
 		return err
