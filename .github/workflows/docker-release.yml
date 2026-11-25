@@ -16,12 +16,12 @@ jobs:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@v4
     - name: Cache Docker layers
-      uses: actions/cache@v3
+      uses: actions/cache@v5
       with:
-        path: /tmp/.buildx-cache
-        key: ${{ runner.os }}-buildx-${{ github.sha }} # Don't use github.ref_name
+        path: /tmp/.buildx-cache-main
+        key: ${{ runner.os }}-buildx-main-${{ github.sha }} # Don't use github.ref_name
         restore-keys: |
           ${{ runner.os }}-buildx-main
     - name: Log in to GitHub Container Registry
@@ -33,8 +33,12 @@ jobs:
     - name: patch excalidraw with qurry varible
       run: cd excalidraw && git apply ../excalidraw-qurry.patch && cd ..
     - name: Build and push latest
+      env:
+        BUILDX_BAKE_ENTITLEMENTS_FS: "0"
       run: CACHE_TO="type=local,dest=/tmp/.buildx-cache-main-new,mode=max" CACHE_FROM="type=local,src=/tmp/.buildx-cache-main" COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 RELEASE_TAG=latest docker compose build --push
     - name: Build and push tag
+      env:
+        BUILDX_BAKE_ENTITLEMENTS_FS: "0"
       run: CACHE_TO="type=local,dest=/tmp/.buildx-cache-main-new,mode=max" CACHE_FROM="type=local,src=/tmp/.buildx-cache-main" COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 RELEASE_TAG=${{ github.event.release.tag_name }} docker compose build --push
     - name: APP::Move cache
       run: |

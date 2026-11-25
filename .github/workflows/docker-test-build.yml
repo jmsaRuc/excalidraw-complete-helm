@@ -16,9 +16,9 @@ jobs:
     - name: Set up QEMU
       uses: docker/setup-qemu-action@v3
     - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v3
+      uses: docker/setup-buildx-action@4
     - name: Cache Docker layers
-      uses: actions/cache@v3
+      uses: actions/cache@v5
       with:
         path: /tmp/.buildx-cache-app
         key: ${{ runner.os }}-buildx-app-${{ github.sha }}
@@ -27,6 +27,8 @@ jobs:
     - name: patch excalidraw with qurry varible
       run: cd excalidraw && git apply ../excalidraw-qurry.patch && cd ..
     - name: Build and Run
+      env:
+        BUILDX_BAKE_ENTITLEMENTS_FS: "0"
       run: CACHE_TO="type=local,dest=/tmp/.buildx-cache-app-new,mode=max" CACHE_FROM="type=local,src=/tmp/.buildx-cache-app" COMPOSE_DOCKER_CLI_BUILD=1 DOCKER_BUILDKIT=1 RELEASE_TAG=${{ github.sha }} docker compose up --build -d
     - name: Wait for healthchecks
       run: timeout 60s sh -c 'until docker ps | grep excalidraw-complete | grep -q healthy; do echo "Waiting for container to be healthy..."; sleep 2; done'
